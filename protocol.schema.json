@@ -1,0 +1,2412 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:creator-copilot:protocol:1.0.0",
+  "title": "Creator Copilot V1.0 MVP normative contract",
+  "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Request"
+    },
+    {
+      "$ref": "#/$defs/Response"
+    },
+    {
+      "$ref": "#/$defs/LocalDraft"
+    }
+  ],
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "NullableText": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "Task": {
+      "enum": [
+        "profile.inspect",
+        "profile.report",
+        "post.inspect",
+        "post.generate",
+        "viral.generate"
+      ]
+    },
+    "Image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imageId",
+        "mimeType",
+        "base64",
+        "width",
+        "height",
+        "byteLength"
+      ],
+      "properties": {
+        "imageId": {
+          "$ref": "#/$defs/Id"
+        },
+        "mimeType": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        },
+        "base64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 1398104,
+          "contentEncoding": "base64"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 10000
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 10000
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        }
+      }
+    },
+    "Images": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/Image"
+      }
+    },
+    "Brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workName",
+        "material",
+        "durationMinutes",
+        "difficulty",
+        "sellingPoint",
+        "pitfalls",
+        "styleRequest",
+        "confirmedTags"
+      ],
+      "properties": {
+        "workName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "material": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "durationMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 43200
+        },
+        "difficulty": {
+          "enum": [
+            "beginner",
+            "intermediate",
+            "advanced",
+            null
+          ]
+        },
+        "sellingPoint": {
+          "$ref": "#/$defs/NullableText"
+        },
+        "pitfalls": {
+          "$ref": "#/$defs/NullableText"
+        },
+        "styleRequest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "confirmedTags": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          }
+        }
+      }
+    },
+    "PublishingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intendedDate",
+        "occasion"
+      ],
+      "properties": {
+        "intendedDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "occasion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "Representative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "sourceImageIds",
+        "confirmedHighFeedback"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "sourceImageIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "confirmedHighFeedback": {
+          "const": true
+        }
+      }
+    },
+    "ProfileInspectInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images"
+      ],
+      "properties": {
+        "images": {
+          "$ref": "#/$defs/Images",
+          "minItems": 1
+        }
+      }
+    },
+    "ProfileReportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images",
+        "mode",
+        "representatives",
+        "manualRepresentative"
+      ],
+      "properties": {
+        "images": {
+          "$ref": "#/$defs/Images",
+          "minItems": 1
+        },
+        "mode": {
+          "enum": [
+            "representatives",
+            "visual_only"
+          ]
+        },
+        "representatives": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Representative"
+          }
+        },
+        "manualRepresentative": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "visual_only"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "representatives": {
+                "maxItems": 0
+              },
+              "manualRepresentative": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "anyOf": [
+              {
+                "properties": {
+                  "representatives": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "manualRepresentative": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "PostInspectInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images",
+        "primaryImageId"
+      ],
+      "properties": {
+        "images": {
+          "$ref": "#/$defs/Images",
+          "minItems": 1
+        },
+        "primaryImageId": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "PostGenerateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images",
+        "primaryImageId",
+        "brief",
+        "publishing"
+      ],
+      "properties": {
+        "images": {
+          "$ref": "#/$defs/Images",
+          "minItems": 1
+        },
+        "primaryImageId": {
+          "$ref": "#/$defs/Id"
+        },
+        "brief": {
+          "$ref": "#/$defs/Brief"
+        },
+        "publishing": {
+          "$ref": "#/$defs/PublishingContext"
+        }
+      }
+    },
+    "ReferenceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "images"
+      ],
+      "properties": {
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "images": {
+          "$ref": "#/$defs/Images"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "properties": {
+            "images": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "OwnInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "images",
+        "primaryImageId",
+        "brief",
+        "publishing"
+      ],
+      "properties": {
+        "topic": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "images": {
+          "$ref": "#/$defs/Images"
+        },
+        "primaryImageId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "brief": {
+          "$ref": "#/$defs/Brief"
+        },
+        "publishing": {
+          "$ref": "#/$defs/PublishingContext"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "topic": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "properties": {
+            "images": {
+              "minItems": 1
+            }
+          }
+        }
+      ]
+    },
+    "ViralGenerateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "own"
+      ],
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/ReferenceInput"
+        },
+        "own": {
+          "$ref": "#/$defs/OwnInput"
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "task",
+        "payload"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/Id"
+        },
+        "task": {
+          "$ref": "#/$defs/Task"
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "profile.inspect"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ProfileInspectInput"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "profile.report"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ProfileReportInput"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.inspect"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/PostInspectInput"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.generate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/PostGenerateInput"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "viral.generate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ViralGenerateInput"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "sourceType",
+        "sourceId",
+        "description",
+        "quote",
+        "confidence"
+      ],
+      "properties": {
+        "evidenceId": {
+          "$ref": "#/$defs/Id"
+        },
+        "sourceType": {
+          "enum": [
+            "image",
+            "user_field",
+            "reference_text"
+          ]
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "quote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      }
+    },
+    "EvidenceIds": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Id"
+      }
+    },
+    "CitedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "evidenceIds"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/EvidenceIds",
+          "minItems": 1
+        }
+      }
+    },
+    "ProfileInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "evidence"
+      ],
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "candidateId",
+              "label",
+              "sourceImageIds",
+              "feedbackSignal",
+              "evidenceIds"
+            ],
+            "properties": {
+              "candidateId": {
+                "$ref": "#/$defs/Id"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "sourceImageIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/Id"
+                }
+              },
+              "feedbackSignal": {
+                "enum": [
+                  "visible_relative",
+                  "unknown"
+                ]
+              },
+              "evidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      }
+    },
+    "Dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "score",
+        "explanation",
+        "evidenceIds"
+      ],
+      "properties": {
+        "key": {
+          "enum": [
+            "legibility",
+            "subject_clarity",
+            "layout_order",
+            "color_harmony"
+          ]
+        },
+        "score": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/EvidenceIds"
+        }
+      }
+    },
+    "ProfileReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage",
+        "healthScore",
+        "dimensions",
+        "summary",
+        "styleObservation",
+        "viralPatterns",
+        "nextWeekTopics",
+        "priorityActions",
+        "evidence"
+      ],
+      "properties": {
+        "coverage": {
+          "enum": [
+            "visual_only",
+            "representative_review"
+          ]
+        },
+        "healthScore": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/Dimension"
+          }
+        },
+        "summary": {
+          "$ref": "#/$defs/CitedText"
+        },
+        "styleObservation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CitedText"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "viralPatterns": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "hypothesis",
+              "representativeLabels",
+              "evidenceIds"
+            ],
+            "properties": {
+              "hypothesis": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 250
+              },
+              "representativeLabels": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "evidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "nextWeekTopics": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "title",
+              "angle",
+              "basisEvidenceIds"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "angle": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "basisEvidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "priorityActions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/CitedText"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      }
+    },
+    "PostInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inferredTags",
+        "evidence"
+      ],
+      "properties": {
+        "inferredTags": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tagId",
+              "category",
+              "label",
+              "confidence",
+              "evidenceIds"
+            ],
+            "properties": {
+              "tagId": {
+                "$ref": "#/$defs/Id"
+              },
+              "category": {
+                "enum": [
+                  "work_type",
+                  "technique",
+                  "visual_style"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 30
+              },
+              "confidence": {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "evidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      }
+    },
+    "Cover": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imageId",
+        "ratio",
+        "layout",
+        "fit",
+        "headline"
+      ],
+      "properties": {
+        "imageId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ratio": {
+          "const": "3:4"
+        },
+        "layout": {
+          "enum": [
+            "clean",
+            "top_caption",
+            "bottom_caption"
+          ]
+        },
+        "fit": {
+          "enum": [
+            "contain",
+            "center_crop"
+          ]
+        },
+        "headline": {
+          "type": "string",
+          "maxLength": 14
+        }
+      }
+    },
+    "Paragraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockId",
+        "role",
+        "text",
+        "evidenceIds"
+      ],
+      "properties": {
+        "blockId": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "enum": [
+            "hook",
+            "description",
+            "parameters",
+            "pitfalls",
+            "closing"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/EvidenceIds"
+        }
+      }
+    },
+    "SeasonalTag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "basis",
+        "sourceValue"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "basis": {
+          "enum": [
+            "user_occasion",
+            "user_date"
+          ]
+        },
+        "sourceValue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "Annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "annotationId",
+        "targetPath",
+        "start",
+        "end",
+        "quote",
+        "category",
+        "message",
+        "suggestion"
+      ],
+      "properties": {
+        "annotationId": {
+          "$ref": "#/$defs/Id"
+        },
+        "targetPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "category": {
+          "enum": [
+            "clarity",
+            "unsupported_claim",
+            "exaggeration",
+            "similarity"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetPath",
+        "text",
+        "evidenceIds"
+      ],
+      "properties": {
+        "targetPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/EvidenceIds",
+          "minItems": 1
+        }
+      }
+    },
+    "Variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variantId",
+        "angle",
+        "cover",
+        "title",
+        "paragraphs",
+        "interactionHook",
+        "hashtags",
+        "seasonalTags",
+        "claims",
+        "annotations"
+      ],
+      "properties": {
+        "variantId": {
+          "$ref": "#/$defs/Id"
+        },
+        "angle": {
+          "enum": [
+            "pain_point",
+            "emotion",
+            "curiosity",
+            "reference_structure"
+          ]
+        },
+        "cover": {
+          "$ref": "#/$defs/Cover"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "paragraphs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/Paragraph"
+          }
+        },
+        "interactionHook": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "hashtags": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[^#\\s]+$"
+          }
+        },
+        "seasonalTags": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/SeasonalTag"
+          }
+        },
+        "claims": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/Claim"
+          }
+        },
+        "annotations": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/Annotation"
+          }
+        }
+      }
+    },
+    "PostResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "photoReview",
+        "variants",
+        "missingAngles",
+        "evidence"
+      ],
+      "properties": {
+        "photoReview": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/CitedText"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Variant",
+            "properties": {
+              "angle": {
+                "enum": [
+                  "pain_point",
+                  "emotion",
+                  "curiosity"
+                ]
+              }
+            }
+          }
+        },
+        "missingAngles": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pain_point",
+              "emotion",
+              "curiosity"
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      }
+    },
+    "ReferenceBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockId",
+        "text",
+        "sourceImageId"
+      ],
+      "properties": {
+        "blockId": {
+          "$ref": "#/$defs/Id"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "sourceImageId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "SourceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockId",
+        "start",
+        "end",
+        "quote"
+      ],
+      "properties": {
+        "blockId": {
+          "$ref": "#/$defs/Id"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "SkeletonItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "explanation",
+        "sourceSpans",
+        "ownEvidenceIds"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "hook",
+            "emotional_value",
+            "progression",
+            "interaction"
+          ]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "sourceSpans": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/SourceSpan"
+          }
+        },
+        "ownEvidenceIds": {
+          "$ref": "#/$defs/EvidenceIds"
+        }
+      }
+    },
+    "ViralResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft",
+        "referenceBlocks",
+        "skeleton",
+        "structureCoverage",
+        "originality",
+        "evidence"
+      ],
+      "properties": {
+        "draft": {
+          "$ref": "#/$defs/Variant",
+          "properties": {
+            "angle": {
+              "const": "reference_structure"
+            }
+          }
+        },
+        "referenceBlocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/ReferenceBlock"
+          }
+        },
+        "skeleton": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/SkeletonItem"
+          }
+        },
+        "structureCoverage": {
+          "enum": [
+            "complete",
+            "partial"
+          ]
+        },
+        "originality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "rewritten",
+            "longestSharedRun",
+            "note"
+          ],
+          "properties": {
+            "scope": {
+              "const": "provided_reference_only"
+            },
+            "rewritten": {
+              "type": "boolean"
+            },
+            "longestSharedRun": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      }
+    },
+    "Warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "fieldPath"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "LOW_IMAGE_QUALITY",
+            "INSUFFICIENT_EVIDENCE",
+            "UNCONFIRMED_FACT_OMITTED",
+            "PARTIAL_RESULT",
+            "SIMILARITY_REWRITTEN",
+            "REFERENCE_PARTIAL"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "fieldPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "fieldPath"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_INPUT",
+            "UNSUPPORTED_IMAGE",
+            "PAYLOAD_TOO_LARGE",
+            "IMAGE_UNREADABLE",
+            "INSUFFICIENT_REFERENCE",
+            "RATE_LIMITED",
+            "UPSTREAM_UNAVAILABLE",
+            "TIMEOUT",
+            "NETWORK_INTERRUPTED",
+            "OUTPUT_INVALID",
+            "CONTENT_UNSUPPORTED",
+            "SIMILARITY_UNRESOLVED"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "fieldPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
+    },
+    "Meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "promptVersion",
+        "modelId",
+        "runType",
+        "durationMs",
+        "retryCount"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "promptVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "runType": {
+          "enum": [
+            "public_demo",
+            "offline_evaluation",
+            "demo_fixture"
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "task",
+        "status",
+        "data",
+        "warnings",
+        "error",
+        "meta"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/$defs/Id"
+        },
+        "task": {
+          "$ref": "#/$defs/Task"
+        },
+        "status": {
+          "enum": [
+            "success",
+            "partial",
+            "error"
+          ]
+        },
+        "data": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/Warning"
+          }
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "error"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "type": "null"
+              },
+              "error": {
+                "$ref": "#/$defs/Error"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "data": {
+                "type": "object"
+              },
+              "error": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "profile.inspect"
+              },
+              "status": {
+                "enum": [
+                  "success",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/ProfileInspection"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "profile.report"
+              },
+              "status": {
+                "enum": [
+                  "success",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/ProfileReport"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.inspect"
+              },
+              "status": {
+                "enum": [
+                  "success",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/PostInspection"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.generate"
+              },
+              "status": {
+                "enum": [
+                  "success",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/PostResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "viral.generate"
+              },
+              "status": {
+                "enum": [
+                  "success",
+                  "partial"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/ViralResult"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.generate"
+              },
+              "status": {
+                "const": "success"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "variants": {
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "allOf": [
+                      {
+                        "contains": {
+                          "properties": {
+                            "angle": {
+                              "const": "pain_point"
+                            }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      },
+                      {
+                        "contains": {
+                          "properties": {
+                            "angle": {
+                              "const": "emotion"
+                            }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      },
+                      {
+                        "contains": {
+                          "properties": {
+                            "angle": {
+                              "const": "curiosity"
+                            }
+                          }
+                        },
+                        "minContains": 1,
+                        "maxContains": 1
+                      }
+                    ]
+                  },
+                  "missingAngles": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "task": {
+                "const": "post.generate"
+              },
+              "status": {
+                "const": "partial"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "variants": {
+                    "maxItems": 2
+                  },
+                  "missingAngles": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "partial"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "warnings": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ImageManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imageId",
+        "role",
+        "name",
+        "mimeType",
+        "width",
+        "height",
+        "originalByteLength",
+        "fingerprint",
+        "restoreState"
+      ],
+      "properties": {
+        "imageId": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "enum": [
+            "profile",
+            "own",
+            "reference"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "mimeType": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "originalByteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "restoreState": {
+          "const": "requires_reupload"
+        }
+      }
+    },
+    "EditedDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceVariantId",
+        "cover",
+        "title",
+        "bodyText",
+        "hashtags"
+      ],
+      "properties": {
+        "sourceVariantId": {
+          "$ref": "#/$defs/Id"
+        },
+        "cover": {
+          "$ref": "#/$defs/Cover"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "bodyText": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "hashtags": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        }
+      }
+    },
+    "Snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "images",
+        "primaryImageId",
+        "brief",
+        "publishing",
+        "topic",
+        "referenceText",
+        "profileMode",
+        "representatives",
+        "manualRepresentative",
+        "inspection",
+        "result",
+        "selectedVariantId",
+        "editedDraft"
+      ],
+      "properties": {
+        "images": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/ImageManifest"
+          }
+        },
+        "primaryImageId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "brief": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Brief"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publishing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublishingContext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "topic": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "referenceText": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 5000
+        },
+        "profileMode": {
+          "enum": [
+            "representatives",
+            "visual_only",
+            null
+          ]
+        },
+        "representatives": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Representative"
+          }
+        },
+        "manualRepresentative": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "inspection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Response"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Response"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selectedVariantId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "editedDraft": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EditedDraft"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ProfileInspectRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Request"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "profile.inspect"
+            }
+          }
+        }
+      ]
+    },
+    "ProfileInspectResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Response"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "profile.inspect"
+            }
+          }
+        }
+      ]
+    },
+    "ProfileReportRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Request"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "profile.report"
+            }
+          }
+        }
+      ]
+    },
+    "ProfileReportResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Response"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "profile.report"
+            }
+          }
+        }
+      ]
+    },
+    "PostInspectRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Request"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "post.inspect"
+            }
+          }
+        }
+      ]
+    },
+    "PostInspectResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Response"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "post.inspect"
+            }
+          }
+        }
+      ]
+    },
+    "PostGenerateRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Request"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "post.generate"
+            }
+          }
+        }
+      ]
+    },
+    "PostGenerateResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Response"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "post.generate"
+            }
+          }
+        }
+      ]
+    },
+    "ViralGenerateRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Request"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "viral.generate"
+            }
+          }
+        }
+      ]
+    },
+    "ViralGenerateResponse": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Response"
+        },
+        {
+          "properties": {
+            "task": {
+              "const": "viral.generate"
+            }
+          }
+        }
+      ]
+    },
+    "CacheIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cacheVersion",
+        "drafts"
+      ],
+      "properties": {
+        "cacheVersion": {
+          "const": "1.0.0"
+        },
+        "drafts": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "draftId",
+              "kind",
+              "title",
+              "updatedAt",
+              "stage"
+            ],
+            "properties": {
+              "draftId": {
+                "$ref": "#/$defs/Id"
+              },
+              "kind": {
+                "enum": [
+                  "profile",
+                  "post",
+                  "viral"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "stage": {
+                "enum": [
+                  "input",
+                  "recognizing",
+                  "confirming",
+                  "generating",
+                  "result",
+                  "preview",
+                  "interrupted"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "LocalEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "runId",
+        "task",
+        "variantId",
+        "event",
+        "runType",
+        "createdAt",
+        "elapsedMs",
+        "errorCode"
+      ],
+      "properties": {
+        "eventId": {
+          "$ref": "#/$defs/Id"
+        },
+        "runId": {
+          "$ref": "#/$defs/Id"
+        },
+        "task": {
+          "enum": [
+            "profile.report",
+            "post.generate",
+            "viral.generate"
+          ]
+        },
+        "variantId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event": {
+          "enum": [
+            "generation_submitted",
+            "generation_failed",
+            "result_available",
+            "result_viewed",
+            "variant_selected",
+            "preview_opened",
+            "manual_edit",
+            "copy_success",
+            "cover_export_success"
+          ]
+        },
+        "runType": {
+          "enum": [
+            "public_demo",
+            "offline_evaluation",
+            "demo_fixture"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "elapsedMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "errorCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error/properties/code"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "LocalDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cacheVersion",
+        "draftId",
+        "kind",
+        "title",
+        "createdAt",
+        "updatedAt",
+        "stage",
+        "snapshot"
+      ],
+      "properties": {
+        "cacheVersion": {
+          "const": "1.0.0"
+        },
+        "draftId": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "profile",
+            "post",
+            "viral"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "stage": {
+          "enum": [
+            "input",
+            "recognizing",
+            "confirming",
+            "generating",
+            "result",
+            "preview",
+            "interrupted"
+          ]
+        },
+        "snapshot": {
+          "$ref": "#/$defs/Snapshot"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+# Secrets: no exceptions for .env* files. Use env.example for a public template.
+.env*
+.npmrc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies and generated output
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.cache/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# Logs and local-only real test materials/results
+*.log
+logs/
+.local/
+test-assets/
+test-results/
+
+# Real screenshots placed in the project root must not be published accidentally.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.heic
+/*.heif
+/*.PNG
+/*.JPG
+/*.JPEG
+/*.WEBP
+/*.HEIC
+/*.HEIF
+
+# Operating-system and editor artifacts
+.DS_Store
+.AppleDouble
+._*
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
