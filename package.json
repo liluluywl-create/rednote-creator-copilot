@@ -1,0 +1,17 @@
+{
+  "name": "rednote-creator-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "profile:inspect": "node test_profile_diagnosis.js",
+    "check": "node --check test_profile_diagnosis.js && node --check tests/profile.test.js",
+    "test": "node --test tests/profile.test.js"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "sharp": "0.34.5"
+  }
+}
