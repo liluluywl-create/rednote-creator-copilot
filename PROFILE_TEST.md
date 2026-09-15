@@ -1,5 +1,15 @@
 # 主页多图本地走查
 
+## Prompt 2.0.1 边界收敛
+
+协议仍为2.0.0；Prompt更新为2.0.1。忽略作者端控件，只按可确认的访客视角评估转化；容量与具体功能使用实测/展示的探索语气，不预设参数或效果。本轮仅做离线代码回归与规则存在性测试，未重新调用模型，不能声称新边界已通过真实输出评测。历史2.0.0报告保留为原始样本，不覆盖。
+
+## 方案 B：协议与 Prompt 2.0.0
+
+本轮补充一种受限语法修复：完整响应只有 data 在顶层 warnings 前漏闭合时，仅在根字段结构明确、两侧均可解析且没有缺失字段时插入一个右括号，再完整校验。禁止一般性补尾括号或补内容。可用 --replay test-results/记录.raw.txt 对已保存回复离线回放；比对原图片指纹、任务与协议，audit 标记 saved_response_replay，不新增模型调用，不计入模型原始格式合格率/生成成功率或推理延迟。历史失败记录不覆盖。
+
+移除 healthScore 与 dimension.score，改为 visualGrade 与 status。增加头像、背景、昵称简介转化及垂直度；三层选题强制各一项。新增字段仍有内部 evidenceIds，不展示在 report.md 正文；无法判断项返回 partial 与警告，不强判缺点。报告同时保存 JSON 与 Markdown。请求/响应协议版本升级2.0.0，Cache 自身格式版本不变；旧报告保留历史，不按新字段加载。旧 profile.inspect 候选结构未变，只对已知版本在内存适配元信息，随后完整校验并比对图片指纹，复用已有确认，不改写历史文件。Prompt文件名保留兼容，内容与运行元数据已标为2.0.0。下文历史执行记录不代表新版评测通过。
+
 ## 2026-09-15 JSON 修复补充
 
 报告 Prompt 增加闭合层级自检。解析失败后，先清理 BOM/外围围栏，再用识别字符串转义的括号扫描处理最多三个末尾多余右花括号，或 error 字段前提前闭合的根对象（已存在 error 时拒绝）。不截取说明文字、不补字段、不补缺失括号；修复后仍须通过完整 Schema 与业务校验。原始回复始终保留，实际修复时另存 repaired.json，并在 audit 中记录 repairApplied、repairOffset、cleaning 和 firstParsePassed；修复通过不计为原始格式合格。此规则取代下文旧的“只清理外围格式”限制。
@@ -34,9 +44,9 @@
 
 ## Prompt与协议
 
-完整 System Message = `prompts/profile_system_v1.0.md` + 当前task + 从协议提取的模型责任 Schema（含全部必要 $defs）。四大分析方向保留；正式报告使用 healthScore、dimensions、styleObservation、viralPatterns、nextWeekTopics 等原字段。
+完整 System Message = `prompts/profile_system_v1.0.md` + 当前task + 从协议提取的模型责任 Schema（含全部必要 $defs）。正式报告使用 visualGrade、dimensions、headerAudit、verticalityAudit、styleObservation、viralPatterns、topicRecommendations 等2.0.0字段。
 
-模型只生成 status/data/warnings/error；程序填写 requestId/task/meta。healthScore 由程序等权计算。先校验模型责任部分，再校验完整 ProfileInspectResponse / ProfileReportResponse，再校验引用、唯一ID、确认范围和评分规则。所有类型、必填项、长度和 additionalProperties 均执行，不删字段、不补默认值、不改协议迁就模型。
+模型只生成 status/data/warnings/error；程序填写 requestId/task/meta。新版不计算或输出视觉数值评分。先校验模型责任部分，再校验完整 ProfileInspectResponse / ProfileReportResponse，再校验引用、唯一ID、确认范围和状态规则。所有类型、必填项、长度和 additionalProperties 均执行，不删字段、不补默认值、不改协议迁就模型。
 
 只做 BOM/外围代码围栏清理，并明确记录首次纯JSON解析失败；不会截取大括号、补尾括号、修补字段或把无效内容包装为通过。保留 raw.txt 和 audit.json，失败返回非零退出码。
 

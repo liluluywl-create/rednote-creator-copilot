@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:creator-copilot:protocol:1.0.0",
+  "$id": "urn:creator-copilot:protocol:2.0.0",
   "title": "Creator Copilot V1.0 MVP normative contract",
   "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6.",
   "oneOf": [
@@ -466,7 +466,7 @@
       ],
       "properties": {
         "schemaVersion": {
-          "const": "1.0.0"
+          "const": "2.0.0"
         },
         "requestId": {
           "$ref": "#/$defs/Id"
@@ -703,7 +703,7 @@
       "additionalProperties": false,
       "required": [
         "key",
-        "score",
+        "status",
         "explanation",
         "evidenceIds"
       ],
@@ -716,14 +716,6 @@
             "color_harmony"
           ]
         },
-        "score": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 100
-        },
         "explanation": {
           "type": "string",
           "minLength": 1,
@@ -731,6 +723,15 @@
         },
         "evidenceIds": {
           "$ref": "#/$defs/EvidenceIds"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "优秀",
+            "良好",
+            "待优化",
+            "无法判断"
+          ]
         }
       }
     },
@@ -739,14 +740,16 @@
       "additionalProperties": false,
       "required": [
         "coverage",
-        "healthScore",
+        "visualGrade",
         "dimensions",
         "summary",
         "styleObservation",
         "viralPatterns",
-        "nextWeekTopics",
+        "topicRecommendations",
         "priorityActions",
-        "evidence"
+        "evidence",
+        "headerAudit",
+        "verticalityAudit"
       ],
       "properties": {
         "coverage": {
@@ -754,14 +757,6 @@
             "visual_only",
             "representative_review"
           ]
-        },
-        "healthScore": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 100
         },
         "dimensions": {
           "type": "array",
@@ -818,35 +813,6 @@
             }
           }
         },
-        "nextWeekTopics": {
-          "type": "array",
-          "maxItems": 3,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "title",
-              "angle",
-              "basisEvidenceIds"
-            ],
-            "properties": {
-              "title": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 50
-              },
-              "angle": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 200
-              },
-              "basisEvidenceIds": {
-                "$ref": "#/$defs/EvidenceIds",
-                "minItems": 1
-              }
-            }
-          }
-        },
         "priorityActions": {
           "type": "array",
           "minItems": 1,
@@ -862,6 +828,235 @@
           "items": {
             "$ref": "#/$defs/Evidence"
           }
+        },
+        "visualGrade": {
+          "type": "string",
+          "enum": [
+            "优秀",
+            "良好",
+            "待优化"
+          ]
+        },
+        "headerAudit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "avatar",
+            "banner",
+            "bioAndConversion"
+          ],
+          "properties": {
+            "avatar": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "feedback",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "feedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            },
+            "banner": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "feedback",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "feedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            },
+            "bioAndConversion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "clarityFeedback",
+                "conversionAdvice",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "clarityFeedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "conversionAdvice": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            }
+          }
+        },
+        "verticalityAudit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "summary",
+            "evidenceIds"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "优秀",
+                "良好",
+                "待优化",
+                "无法判断"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 450
+            },
+            "evidenceIds": {
+              "$ref": "#/$defs/EvidenceIds"
+            }
+          }
+        },
+        "topicRecommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "title",
+              "rationale",
+              "visualAdvice",
+              "basisEvidenceIds"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "稳健深耕款",
+                  "场景破圈款",
+                  "高搜痛点/情绪送礼款"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "visualAdvice": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "basisEvidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "稳健深耕款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "场景破圈款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "高搜痛点/情绪送礼款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ]
         }
       }
     },
@@ -1511,7 +1706,7 @@
       ],
       "properties": {
         "schemaVersion": {
-          "const": "1.0.0"
+          "const": "2.0.0"
         },
         "promptVersion": {
           "type": "string",

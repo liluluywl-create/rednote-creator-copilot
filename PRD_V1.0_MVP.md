@@ -5,7 +5,7 @@
 | 项目 | 定义 |
 |---|---|
 | 项目名称 | 创作者工具（Creator Copilot，工作名） |
-| 版本 | V1.0 MVP；协议版本 `1.0.0`；缓存版本 `1.0.0` |
+| 版本 | V1.0 MVP 方案 B；协议版本 `2.0.0`；缓存格式版本 `1.0.0`（旧报告不自动迁移） |
 | 日期 | 2026-09-14 |
 | 文档维护人 | 产品负责人：项目发起人；AI 协助整理，不替代产品负责人的变更确认 |
 | 适用范围 | 移动端优先 Web / PWA；手工编织与泛生活创作者首发样板 |
@@ -34,6 +34,7 @@
 |---|---|
 | V1.0 MVP | 整合已确认轻量交互；明确 localStorage 取舍；增加字段协议、评测、异常和验收标准 |
 | V1.0 MVP 本地走查补记（2026-09-15） | 用户确认首轮供应商为火山方舟，模型配置为 doubao-seed-evolving；沿用协议1.0.0与识别→人工确认→报告，不改变字段、图片限额或等待预算 |
+| 方案 B（协议2.0.0） | 移除全部主页数值评分；增加门面与垂直度诊断；三层选题；正文隐藏证据代码。旧报告不迁移；旧识别结构不变，仅在内存显式适配版本后复用人工确认。 |
 
 下一次改变输入必填项、字段含义、返回结构、缓存行为、生成次数或功能范围，必须同时更新本 PRD、协议和对应样例。模型、Prompt 或过滤规则调整必须记录版本与回归结果。不可直接以临时聊天内容覆盖已发布基线；先将决定写回文档。每次开发、接口接入、Prompt 调试前通读对应功能章节、3.6 业务不变量、5—6 章及协议附录。
 
@@ -87,7 +88,7 @@ T0 不根据粉丝量评判创作能力，不推断商业身份或收入；“�
 | 调用任务 | 默认策略 | 质量重点 |
 |---|---|---|
 | `profile.inspect` | 一次多图识别，输出最多 3 个作品标签 | 可辨认、依据正确、不猜数值 |
-| `profile.report` | 用户确认后一次生成结构化报告 | 观察有依据、评分可解释、建议具体 |
+| `profile.report` | 用户确认后一次生成结构化报告 | 状态有依据、门面与垂直度覆盖、选题有发散度 |
 | `post.inspect` | 上传后可选预识别；超时可放弃 | 标签仍标“推测”，不阻断表单 |
 | `post.generate` | 一次生成三套方案，不做三轮串行优化 | 同事实、不同表达角度、文图一致 |
 | `viral.generate` | 一次理解参考并生成文案及解释摘要 | 自有素材忠实、抽象结构迁移、引用定位 |
@@ -151,7 +152,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 3. primaryImageId 必须属于自有图片；无自有图片时为 null。参考作者图片不得充当用户封面。所有 sourceImageIds 必须能在当前请求中找到。
 4. 每个 evidenceId 均可解析。`sourceType=user_field` 的 sourceId 是当前 Request 中存在且非空的 JSON Pointer；image 引用当前图 ID；reference_text 引用返回的 referenceBlocks。user_field 才可支持耗时、材料成分、真实经历等不可直接观察事实。
 5. 标题、封面大字、正文中的每条可核实事实必须进入 claims，且引用真正支持它的证据。图像只支持可见外观，不证明耗时、材质、失败次数。模型漏报事实 ledger 也算错误，不能以“claims 为空”逃过检查。
-6. 四个评分维度 key 必须各出现一次。有效分数至少 3 项时，服务端对有效分数等权取整生成 healthScore；否则 healthScore=null。未知不是零；风格多样不在扣分项内。
+6. 四个视觉维度 key 各出现一次，status 为优秀/良好/待优化/无法判断；移除所有数值评分及等权计算。visualGrade 为优秀/良好/待优化，仅针对可见整体。无法判断项返回 partial 与 warning，不以待优化替代未知；全部不可判断返回 error。所有有判断的项目必须关联证据。三层 topicRecommendations 各一次，不得用未确认作品推导高反馈规律。
 7. visual_only 不输出高反馈规律。representative_review 的规律只能关联用户选中或明确手填的作品；看不出依据时留空并发 warning。人工名称与已选标签合计按最多 3 个代表作品处理。
 8. 成品 success 必须是 pain_point、emotion、curiosity 各一套；partial 仅允许 1～2 套，missingAngles 恰为缺失方向。每套正文与互动结尾不重复，合计不超过 800 字。
 9. 仿写 draft.angle 必须是 reference_structure。其事实依据仅来自 own 素材；参考内容只支持结构解释，不能转移作者经历或成就。referenceBlocks 的总字数 ≤5,000。
@@ -225,7 +226,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 | 识别 | 图文骨架屏；调用 `profile.inspect`；没有数字校准和 Bounding Box 编辑 |
 | 轻确认 | `candidates[0..3]`；显示 label、疑似反馈状态、复选符号；整标签可点 |
 | 备选 | “都不准确”展开 `manualRepresentative`，最多100字；另有“仅做视觉诊断” |
-| 报告 | 综合健康分、四个视觉维度、风格观察、高反馈假设、下周选题建议、优先动作和依据 |
+| 报告 | 整体视觉标签、四项视觉状态、头像/背景图/昵称简介转化、垂直度、风格观察、高反馈假设、三层选题与优先动作 |
 
 #### 业务流程与 AI 逻辑
 
@@ -233,7 +234,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 用户勾选确认“我认为这篇反馈较好”，也可仅做视觉诊断，不要求校对具体数字。正式报告重新基于提交截图和用户确认分析，不把前端传入标签当作已验证的客观平台数据。
 
-综合健康分在 UI 标为“主页视觉健康分（AI 参考）”，不代表账号权重、流量或平台评分。维度为文字可读性、主体突出、版面组织、色彩协调。每项给 score、解释和证据；评分细则：0～24 明显影响辨认，25～49 多处问题，50～74 基本可用，75～100 表达清楚；同档内必须用观察支持差异。稳定性需用重复样本评测。
+报告不展示或保存 healthScore、dimension.score。visualGrade 是可见整体的定性判断；单项 status 优秀表示亮点清楚且表达稳定，良好表示可辨可读且有小改进空间，待优化须说明可见问题与动作，无法判断须说明截图局限。正文不出现证据编号或扣分措辞；依据列表与字段保留为内部审计。门面 feedback/clarityFeedback 同时描述可见资产和点评，不新增未获授权的商业目标；如需商业建议，用条件表达。垂直度区分可见笔记主副线，不虚构全账号比例，不把风格探索判为不垂直。
 
 风格观察单列，不因探索多个风格而扣分。高反馈规律是待验证假设，不输出“这就是爆款原因”。下周建议最多 3 个，只提出可尝试的题目与表达角度，不伪称用户已经做过作品、不承诺具体发布时间表现。
 
@@ -248,8 +249,11 @@ Request／Response 完整 Schema 为附录的 `ProfileInspectRequest / ProfileIn
 | candidate | candidateId、label、sourceImageIds、feedbackSignal、evidenceIds；没有赞藏数强制字段 |
 | ProfileReportInput | images、mode、representatives、manualRepresentative；visual_only 时两种代表输入均为空 |
 | representative | label、sourceImageIds、confirmedHighFeedback=true；最多3项 |
-| ProfileReport | coverage、healthScore、dimensions、summary、styleObservation、viralPatterns、nextWeekTopics、priorityActions、evidence |
-| dimension | key、score或null、explanation、evidenceIds；恰好四个不同key |
+| ProfileReport | coverage、visualGrade、dimensions、headerAudit、verticalityAudit、summary、styleObservation、viralPatterns、topicRecommendations、priorityActions、evidence |
+| dimension | key、status、explanation、evidenceIds；恰好四个不同key |
+| headerAudit | avatar/banner: status、feedback、evidenceIds；bioAndConversion: status、clarityFeedback、conversionAdvice、evidenceIds |
+| verticalityAudit | status、summary、evidenceIds；区分可见主副线，不编造全账号占比 |
+| topicRecommendations | 恰好3项：稳健深耕款、场景破圈款、高搜痛点/情绪送礼款；每项type、title、rationale、visualAdvice、basisEvidenceIds；至少一个跳出单一代表作品，高搜标签不是实际搜索量事实 |
 | viralPattern | hypothesis、representativeLabels、evidenceIds；0～3项 |
 | nextWeekTopic | title、angle、basisEvidenceIds；0～3项；都是建议，不是已发生的用户事实 |
 
@@ -381,7 +385,7 @@ V1.0 不另做单方向补生成接口；用户选择“重新生成三套”时
 
 ```json
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "requestId": "demo_viral_001",
   "task": "viral.generate",
   "payload": {
@@ -478,9 +482,9 @@ System Prompt由服务端按版本加载，固定声明任务、数据边界、�
 
 首批Few-shot至少覆盖：资料齐全；跳过所有可选字段；低清截图；多风格主页；参考仅有封面；仿写近似风险。例子应短且直接服务失败模式，不能把长篇“爆款套路”塞进每次请求。Prompt文本不得输出到前端。
 
-正式生成内部次序：读取素材→区分事实、观察和推测→生成候选与证据→检查结构和内容。只交付文案、解释摘要和证据，不交付隐藏推理过程。healthScore、originality.longestSharedRun、耗时、重试次数由应用计算或记录，不由模型编造。
+正式生成内部次序：读取素材→区分事实、观察和推测→生成候选与证据→检查结构和内容。只交付文案、解释摘要和证据，不交付隐藏推理过程。originality.longestSharedRun、耗时、重试次数由应用计算或记录，不由模型编造。
 
-Prompt版本命名分别为 `profile_inspect_v1.0.0`、`profile_report_v1.0.0`、`post_inspect_v1.0.0`、`post_generate_v1.0.0`、`viral_generate_v1.0.0`。版本变更必须重跑相关回归；全局系统规则变更重跑三个模块。
+主页 Prompt 版本为 `profile_inspect_v2.0.1`、`profile_report_v2.0.1`，协议仍为2.0.0。本次补充：忽略管理店铺、编辑资料等作者端控件，只从普通访客视角评估转化；容量与具体功能用实测/展示的探索语气，未经核实不得承诺参数或效果。其他模块仍为 `post_inspect_v1.0.0`、`post_generate_v1.0.0`、`viral_generate_v1.0.0`。版本变更必须重跑相关回归；本次只修改主页 Prompt，其他模块公共请求/响应版本随协议升级，内容字段不变，未声称其他模块已完成真实调用验证。
 
 ### 6.2 评测数据与执行方案
 
@@ -513,7 +517,7 @@ Prompt版本命名分别为 `profile_inspect_v1.0.0`、`profile_report_v1.0.0`�
 | 参考仿写风险 | 人工判定仍复用了辨识性表达的结果数 | 锁定测试集为0；不等于全网绝对原创认证 |
 | 生成等待时间 | 正式提交到首份完整可用内容呈现；不含填表和确认时间 | P50≤20秒、P95≤45秒，报告实际网络与设备条件 |
 | 每个可用结果成本 | 该模块全部模型调用费用（含预识别、失败、重试）÷ 可用正式生成结果数 | 实测后作为选型指标，不虚填单价 |
-| 视觉评分稳定性 | 同一样例重复运行健康分的极差；仅对可评分样例计算 | 90%的可评分样例极差≤10分 |
+| 视觉标签稳定性 | 同一样例重复运行定性等级的一致率，排除无法判断项并单列其比例 | 初始验收目标：等级一致率≥90%；尚未验证 |
 
 90次调用的结果只用于MVP小样本判断，不能证明总体质量达到某个精确比例。报告同时给出计数和适合二项指标的置信区间；字段全空、降级比例过高或过度拒绝也必须展示，不允许靠少回答获得高事实率。
 
@@ -584,7 +588,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
 
 ### 文档协议校验记录（不是模型评测结果）
 
-本次已通过 Draft 2020-12 元Schema校验；检查了54个定义、112处内部引用；23个正例和27个反例全部符合预期。覆盖五种请求和响应、三套方案约束、部分失败、非法字段、空值、图片元数据缓存和行为事件。示例图片仅用于结构校验，没有据此声称图像可解码。
+历史协议1.0.0的文档检查：曾通过 Draft 2020-12 元Schema校验，54个定义、112处引用、23个正例与27个反例。这不是方案 B 的评测结果；新版必须重新验证，不沿用旧通过结论。
 
 上述验证不包含真实模型调用、UI运行、图片解码、缓存实测或业务不变量的执行测试；这些是下一阶段必做项。正文内演示请求已通过对应Request Schema校验。独立协议文件与下面的附录内容必须保持一致。
 
@@ -597,7 +601,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:creator-copilot:protocol:1.0.0",
+  "$id": "urn:creator-copilot:protocol:2.0.0",
   "title": "Creator Copilot V1.0 MVP normative contract",
   "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6.",
   "oneOf": [
@@ -1063,7 +1067,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       ],
       "properties": {
         "schemaVersion": {
-          "const": "1.0.0"
+          "const": "2.0.0"
         },
         "requestId": {
           "$ref": "#/$defs/Id"
@@ -1300,7 +1304,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       "additionalProperties": false,
       "required": [
         "key",
-        "score",
+        "status",
         "explanation",
         "evidenceIds"
       ],
@@ -1313,14 +1317,6 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
             "color_harmony"
           ]
         },
-        "score": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 100
-        },
         "explanation": {
           "type": "string",
           "minLength": 1,
@@ -1328,6 +1324,15 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
         },
         "evidenceIds": {
           "$ref": "#/$defs/EvidenceIds"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "优秀",
+            "良好",
+            "待优化",
+            "无法判断"
+          ]
         }
       }
     },
@@ -1336,14 +1341,16 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       "additionalProperties": false,
       "required": [
         "coverage",
-        "healthScore",
+        "visualGrade",
         "dimensions",
         "summary",
         "styleObservation",
         "viralPatterns",
-        "nextWeekTopics",
+        "topicRecommendations",
         "priorityActions",
-        "evidence"
+        "evidence",
+        "headerAudit",
+        "verticalityAudit"
       ],
       "properties": {
         "coverage": {
@@ -1351,14 +1358,6 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
             "visual_only",
             "representative_review"
           ]
-        },
-        "healthScore": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 100
         },
         "dimensions": {
           "type": "array",
@@ -1415,35 +1414,6 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
             }
           }
         },
-        "nextWeekTopics": {
-          "type": "array",
-          "maxItems": 3,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "title",
-              "angle",
-              "basisEvidenceIds"
-            ],
-            "properties": {
-              "title": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 50
-              },
-              "angle": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 200
-              },
-              "basisEvidenceIds": {
-                "$ref": "#/$defs/EvidenceIds",
-                "minItems": 1
-              }
-            }
-          }
-        },
         "priorityActions": {
           "type": "array",
           "minItems": 1,
@@ -1459,6 +1429,235 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
           "items": {
             "$ref": "#/$defs/Evidence"
           }
+        },
+        "visualGrade": {
+          "type": "string",
+          "enum": [
+            "优秀",
+            "良好",
+            "待优化"
+          ]
+        },
+        "headerAudit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "avatar",
+            "banner",
+            "bioAndConversion"
+          ],
+          "properties": {
+            "avatar": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "feedback",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "feedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            },
+            "banner": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "feedback",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "feedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            },
+            "bioAndConversion": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "clarityFeedback",
+                "conversionAdvice",
+                "evidenceIds"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "优秀",
+                    "良好",
+                    "待优化",
+                    "无法判断"
+                  ]
+                },
+                "clarityFeedback": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "conversionAdvice": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "evidenceIds": {
+                  "$ref": "#/$defs/EvidenceIds"
+                }
+              }
+            }
+          }
+        },
+        "verticalityAudit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "summary",
+            "evidenceIds"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "优秀",
+                "良好",
+                "待优化",
+                "无法判断"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 450
+            },
+            "evidenceIds": {
+              "$ref": "#/$defs/EvidenceIds"
+            }
+          }
+        },
+        "topicRecommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "title",
+              "rationale",
+              "visualAdvice",
+              "basisEvidenceIds"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "稳健深耕款",
+                  "场景破圈款",
+                  "高搜痛点/情绪送礼款"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "visualAdvice": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "basisEvidenceIds": {
+                "$ref": "#/$defs/EvidenceIds",
+                "minItems": 1
+              }
+            }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "稳健深耕款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "场景破圈款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "高搜痛点/情绪送礼款"
+                  }
+                }
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ]
         }
       }
     },
@@ -2108,7 +2307,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       ],
       "properties": {
         "schemaVersion": {
-          "const": "1.0.0"
+          "const": "2.0.0"
         },
         "promptVersion": {
           "type": "string",

@@ -4,12 +4,16 @@ import { mkdtemp, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
-import { createContract, parseModelJson, checkBusiness, finalizeModel, prepareImages, makeProviderBody, callProvider, validateConfig, LIMITS } from '../test_profile_diagnosis.js';
+import { createContract, parseModelJson, checkBusiness, finalizeModel, prepareImages, makeProviderBody, callProvider, validateConfig, LIMITS, SCHEMA_VERSION, compatibleInspection, renderReportMarkdown } from '../test_profile_diagnosis.js';
 
 const contract = await createContract();
+test('prompt retains visitor-only audit and exploratory capability constraints', async () => {
+  const prompt = await readFile(new URL('../prompts/profile_system_v1.0.md', import.meta.url), 'utf8');
+  for (const required of ['V2.0.1', '忽略作者端私有功能控件', '普通访客视角', '实测能不能装下耳机？', '不预设未经核实的实物参数']) assert.ok(prompt.includes(required));
+});
 const evidence = { evidenceId: 'e1', sourceType: 'image', sourceId: 'image_1', description: '自建示例中的蓝色杯垫。', quote: null, confidence: 'high' };
-const input = { schemaVersion: '1.0.0', requestId: 'test_1', task: 'profile.inspect', payload: { images: [{ imageId: 'image_1', mimeType: 'image/png', base64: 'AAAA', width: 20, height: 20, byteLength: 3 }] } };
-const meta = { schemaVersion: '1.0.0', promptVersion: 'profile_inspect_v1.0.0', modelId: 'test_fixture', runType: 'demo_fixture', durationMs: 0, retryCount: 0 };
+const input = { schemaVersion: SCHEMA_VERSION, requestId: 'test_1', task: 'profile.inspect', payload: { images: [{ imageId: 'image_1', mimeType: 'image/png', base64: 'AAAA', width: 20, height: 20, byteLength: 3 }] } };
+const meta = { schemaVersion: SCHEMA_VERSION, promptVersion: 'profile_inspect_v2.0.0', modelId: 'test_fixture', runType: 'demo_fixture', durationMs: 0, retryCount: 0 };
 const model = () => ({ status: 'success', data: { candidates: [{ candidateId: 'c1', label: '蓝色杯垫', sourceImageIds: ['image_1'], feedbackSignal: 'unknown', evidenceIds: ['e1'] }], evidence: [structuredClone(evidence)] }, warnings: [], error: null });
 
 test('accepts pure JSON without cleanup', () => assert.equal(parseModelJson(JSON.stringify(model())).firstParsePassed, true));
@@ -31,6 +35,12 @@ test('repair refuses prose, multiple documents, missing braces, mismatches and d
 test('syntactic repair never bypasses protocol validation', () => {
   const result = parseModelJson('{"overall_score":75}}');
   assert.throws(() => finalizeModel(result.value, input, meta, contract));
+});
+test('repairs only a complete envelope missing the data closure before root warnings', () => {
+  const valid=JSON.stringify(model()); const broken=valid.replace('},"warnings":',' ,"warnings":');
+  const r=parseModelJson(broken); assert.equal(r.cleaning,'close_data_before_root_warnings'); assert.deepEqual(r.value,model());
+  assert.equal(finalizeModel(r.value,input,meta,contract).status,'success');
+  for(const bad of [broken.slice(0,-1),'{"data":{"x":1,"warnings":[],"error":null}', '{"status":"success","data":{"warnings":[],"x":1,"warnings":[],"error":null}']) assert.throws(()=>parseModelJson(bad));
 });
 test('records a fenced response as first-parse failure, not pristine JSON', () => {
   const r = parseModelJson('```json\n' + JSON.stringify(model()) + '\n```'); assert.equal(r.firstParsePassed, false); assert.deepEqual(r.value, model());
@@ -66,16 +76,58 @@ test('partial must include a warning; errors cannot masquerade as success', () =
   const error = { status: 'error', data: null, warnings: [], error: { code: 'IMAGE_UNREADABLE', message: '无法辨认', retryable: false, fieldPath: '/payload/images' } };
   assert.equal(finalizeModel(error, input, meta, contract).status, 'error');
 });
-test('program computes healthScore without modifying raw model output', () => {
-  const request = { ...input, task: 'profile.report', payload: { ...input.payload, mode: 'visual_only', representatives: [], manualRepresentative: null } };
-  const v = { status: 'success', data: { coverage: 'visual_only', healthScore: null, dimensions: ['legibility', 'subject_clarity', 'layout_order', 'color_harmony'].map((key, i) => ({ key, score: [70, 80, 90, null][i], explanation: '自建样例', evidenceIds: ['e1'] })), summary: { text: '自建样例', evidenceIds: ['e1'] }, styleObservation: null, viralPatterns: [], nextWeekTopics: [], priorityActions: [{ text: '增加文字对比度', evidenceIds: ['e1'] }], evidence: [evidence] }, warnings: [], error: null };
-  assert.equal(finalizeModel(v, request, { ...meta, promptVersion: 'profile_report_v1.0.0' }, contract).data.healthScore, 80);
-  assert.equal(v.data.healthScore, null);
-  v.data.dimensions[0].key = 'subject_clarity'; assert.throws(() => finalizeModel(v, request, meta, contract));
+const reportRequest = { ...input, task: 'profile.report', payload: { ...input.payload, mode: 'visual_only', representatives: [], manualRepresentative: null } };
+const reportModel = () => ({ status: 'success', data: {
+  coverage: 'visual_only', visualGrade: '良好',
+  dimensions: ['legibility', 'subject_clarity', 'layout_order', 'color_harmony'].map(key => ({key, status: '良好', explanation: '自建样例', evidenceIds: ['e1']})),
+  headerAudit: { avatar: {status:'良好',feedback:'头像可辨',evidenceIds:['e1']}, banner:{status:'良好',feedback:'背景简洁',evidenceIds:['e1']},bioAndConversion:{status:'良好',clarityFeedback:'昵称清楚',conversionAdvice:'如想分享教程可补一句',evidenceIds:['e1']} },
+  verticalityAudit:{status:'良好',summary:'手作主线与生活支线相连',evidenceIds:['e1']},
+  summary:{text:'自建样例',evidenceIds:['e1']},styleObservation:null,viralPatterns:[],
+  topicRecommendations:['稳健深耕款','场景破圈款','高搜痛点/情绪送礼款'].map(type=>({type,title:'自建选题',rationale:'观察基础',visualAdvice:'作品近景',basisEvidenceIds:['e1']})),
+  priorityActions:[{text:'增加文字对比度',evidenceIds:['e1']}],evidence:[structuredClone(evidence)]
+},warnings:[],error:null});
+test('qualitative report retains grades without injecting numeric scores', () => {
+  const v=reportModel(); const before=structuredClone(v);
+  const r=finalizeModel(v,reportRequest,meta,contract);
+  assert.equal(r.data.visualGrade,'良好'); assert.ok(!Object.hasOwn(r.data,'healthScore')); assert.deepEqual(v,before);
+  v.data.dimensions[0].key='subject_clarity'; assert.throws(()=>finalizeModel(v,reportRequest,meta,contract));
+});
+test('new report rejects numeric fields, missing assets and invalid labels', () => {
+  const cases=[reportModel(),reportModel(),reportModel(),reportModel()];
+  cases[0].data.healthScore=80; cases[1].data.dimensions[0].score=80; delete cases[2].data.headerAudit.banner; cases[3].data.visualGrade='一般';
+  for(const v of cases) assert.throws(()=>finalizeModel(v,reportRequest,meta,contract));
+});
+test('three topic layers are mandatory and unique in schema itself', () => {
+  for(const change of [v=>v.data.topicRecommendations.pop(),v=>v.data.topicRecommendations[1].type='稳健深耕款']) {
+    const v=reportModel(); change(v); assert.equal(contract.models['profile.report'](v),false);
+  }
+});
+test('unreadable assets require explicit partial warning, not a negative grade', () => {
+  const v=reportModel(); v.data.headerAudit.banner={status:'无法判断',feedback:'截图未覆盖背景',evidenceIds:[]};
+  assert.throws(()=>finalizeModel(v,reportRequest,meta,contract));
+  v.status='partial';v.warnings=[{code:'INSUFFICIENT_EVIDENCE',message:'截图未覆盖背景',fieldPath:'/data/headerAudit/banner'}];
+  assert.equal(finalizeModel(v,reportRequest,meta,contract).status,'partial');
+});
+test('new assets and topics require valid evidence; user prose rejects codes and ratings', () => {
+  for(const change of [v=>v.data.headerAudit.avatar.evidenceIds=['missing'],v=>v.data.verticalityAudit.evidenceIds=[],v=>v.data.topicRecommendations[0].basisEvidenceIds=['missing'],v=>v.data.summary.text='依据 e5',v=>v.data.headerAudit.avatar.feedback='扣20分']) {
+    const v=reportModel(); change(v); assert.throws(()=>finalizeModel(v,reportRequest,meta,contract));
+  }
+});
+test('Markdown includes all new sections and omits internal evidence', () => {
+  const md=renderReportMarkdown(finalizeModel(reportModel(),reportRequest,meta,contract));
+  for(const term of ['头像','背景图','昵称','内容垂直度','稳健深耕款','场景破圈款','高搜痛点/情绪送礼款']) assert.ok(md.includes(term));
+  assert.doesNotMatch(md,/e1|evidenceIds|healthScore/);
+});
+test('legacy inspection compatibility is explicit, nonmutating and never migrates reports', () => {
+  const old={...finalizeModel(model(),input,meta,contract),meta:{...meta,schemaVersion:'1.0.0'}};
+  const copy=compatibleInspection(old); contract.check('ProfileInspectResponse',copy);
+  assert.equal(old.meta.schemaVersion,'1.0.0');assert.equal(copy.meta.schemaVersion,SCHEMA_VERSION);
+  assert.throws(()=>compatibleInspection({...old,task:'profile.report'}));
+  assert.throws(()=>compatibleInspection({...old,meta:{...meta,schemaVersion:'3.0.0'}}));
 });
 test('visual-only report rejects unconfirmed viral patterns', () => {
   const r = { ...input, task: 'profile.report', payload: { ...input.payload, mode: 'visual_only', representatives: [], manualRepresentative: null } };
-  const v = { requestId: r.requestId, task: r.task, status: 'success', data: { evidence: [evidence], dimensions: ['legibility', 'subject_clarity', 'layout_order', 'color_harmony'].map(key => ({ key, score: null, evidenceIds: [] })), coverage: 'visual_only', viralPatterns: [{ hypothesis: '不应出现', representativeLabels: ['未确认'], evidenceIds: ['e1'] }], healthScore: null } };
+  const v = {requestId:r.requestId,task:r.task,...reportModel()}; v.data.viralPatterns=[{hypothesis:'不应出现',representativeLabels:['未确认'],evidenceIds:['e1']}];
   assert.throws(() => checkBusiness(v, r));
 });
 test('configuration restricts key destination and rejects placeholders', () => {

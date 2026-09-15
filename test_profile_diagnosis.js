@@ -8,6 +8,9 @@ import addFormats from 'ajv-formats';
 import sharp from 'sharp';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+export const SCHEMA_VERSION = '2.0.0';
+const PROMPT_VERSION = '2.0.1';
+const TOPIC_TYPES = ['稳健深耕款', '场景破圈款', '高搜痛点/情绪送礼款'];
 export const LIMITS = Object.freeze({
   originalBytes: 10 * 1024 ** 2, originalTotal: 30 * 1024 ** 2,
   imageBytes: 1024 ** 2, imageTotal: 2 * 1024 ** 2, requestBytes: 3 * 1024 ** 2,
@@ -88,7 +91,7 @@ export function parseModelJson(raw) {
   try { return { value: JSON.parse(cleaned), firstParsePassed: false, cleaning: 'bom_or_outer_fence' }; }
   catch { /* Scan delimiters outside strings; never extract arbitrary prose. */ }
   if (!cleaned.startsWith('{')) fail('无法安全修复 JSON。', 'OUTPUT_INVALID');
-  const stack = []; let quoted = false, escaped = false;
+  const stack = [], warningBoundaries = []; let quoted = false, escaped = false;
   for (let i = 0; i < cleaned.length; i++) {
     const char = cleaned[i];
     if (quoted) {
@@ -97,7 +100,10 @@ export function parseModelJson(raw) {
       else if (char === '"') quoted = false;
       continue;
     }
-    if (char === '"') { quoted = true; continue; }
+    if (char === '"') {
+      if (stack.length === 2 && stack.every(c => c === '{') && /^"warnings"\s*:/.test(cleaned.slice(i))) warningBoundaries.push(i);
+      quoted = true; continue;
+    }
     if (char === '{' || char === '[') stack.push(char);
     else if (char === '}' || char === ']') {
       if (stack.pop() !== (char === '}' ? '{' : '[')) break;
@@ -115,6 +121,24 @@ export function parseModelJson(raw) {
       try {
         return { value: JSON.parse(repaired), firstParsePassed: false, cleaning, repairedText: repaired, repairOffset: i };
       } catch { break; }
+    }
+  }
+  // One known envelope defect only: data was not closed before root warnings.
+  // Both halves must parse without inventing any field/value; incomplete responses still fail.
+  if (!quoted && stack.length === 1 && stack[0] === '{' && warningBoundaries.length === 1) {
+    const boundary = warningBoundaries[0], before = cleaned.slice(0, boundary).trimEnd();
+    if (before.endsWith(',')) {
+      const prefix = before.slice(0, -1);
+      try {
+        const head = JSON.parse(prefix + '}}');
+        if (Object.keys(head).sort().join(',') === 'data,status' && head.data && !Array.isArray(head.data)) {
+          const repaired = prefix + '},' + cleaned.slice(boundary);
+          const value = JSON.parse(repaired);
+          if (Object.keys(value).sort().join(',') === 'data,error,status,warnings' && Array.isArray(value.warnings)) {
+            return {value, firstParsePassed:false, cleaning:'close_data_before_root_warnings', repairedText:repaired, repairOffset:prefix.length};
+          }
+        }
+      } catch { /* Not the uniquely recognizable envelope defect. */ }
     }
   }
   fail('无法安全修复 JSON；未补字段、截断内容或修改语义。', 'OUTPUT_INVALID');
@@ -163,16 +187,23 @@ export function checkBusiness(response, request) {
     }
   } else {
     if (new Set(data.dimensions.map(d => d.key)).size !== 4) fail('四个视觉维度必须各出现一次。', 'OUTPUT_INVALID');
-    if (data.dimensions.some(d => d.score !== null && d.evidenceIds.length === 0)) fail('有评分但无引用依据。', 'OUTPUT_INVALID');
+    const observations = [...data.dimensions, ...Object.values(data.headerAudit), data.verticalityAudit];
+    if (observations.some(d => d.status !== '无法判断' && d.evidenceIds.length === 0)) fail('有诊断标签但无引用依据。', 'OUTPUT_INVALID');
+    if (observations.some(d => d.status === '无法判断') && (response.status !== 'partial' || !response.warnings.length)) fail('无法判断的项目必须标记 partial 并说明局限。', 'OUTPUT_INVALID');
     const visualOnly = request.payload.mode === 'visual_only';
     if (data.coverage !== (visualOnly ? 'visual_only' : 'representative_review')) fail('报告范围与确认方式不一致。', 'OUTPUT_INVALID');
     if (visualOnly && data.viralPatterns.length) fail('未确认代表作品，不能输出高反馈规律。', 'OUTPUT_INVALID');
     const labels = new Set(request.payload.representatives.map(r => r.label));
     if (request.payload.manualRepresentative) labels.add(request.payload.manualRepresentative);
     if (data.viralPatterns.some(p => p.representativeLabels.some(label => !labels.has(label)))) fail('规律引用了未确认作品。', 'OUTPUT_INVALID');
-    const scores = data.dimensions.map(d => d.score).filter(n => n !== null);
-    const expected = scores.length >= 3 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-    if (data.healthScore !== expected) fail('总分不符合等权计算规则。', 'OUTPUT_INVALID');
+    if (new Set(data.topicRecommendations.map(t => t.type)).size !== 3) fail('三个选题层级必须各出现一次。', 'OUTPUT_INVALID');
+    // User-facing prose cannot leak internal evidence identifiers or numerical ratings.
+    const prose = [data.summary.text, data.styleObservation?.text, ...data.dimensions.map(d => d.explanation),
+      data.headerAudit.avatar.feedback, data.headerAudit.banner.feedback, data.headerAudit.bioAndConversion.clarityFeedback,
+      data.headerAudit.bioAndConversion.conversionAdvice, data.verticalityAudit.summary,
+      ...data.viralPatterns.map(p => p.hypothesis), ...data.priorityActions.map(p => p.text),
+      ...data.topicRecommendations.flatMap(t => [t.title, t.rationale, t.visualAdvice]), ...response.warnings.map(w => w.message)];
+    if (prose.some(s => s && (/\be\d+\b/i.test(s) || /扣\s*\d+\s*分|\d+\s*\/\s*100/.test(s)))) fail('面向用户的正文包含证据代码或数值评分。', 'OUTPUT_INVALID');
   }
 }
 
@@ -265,11 +296,6 @@ export function finalizeModel(value, request, meta, contract, audit = {}) {
   audit.modelSchemaPassed = validate(value);
   if (!audit.modelSchemaPassed) throw new TestError(`模型字段校验失败：${JSON.stringify(validate.errors.map(e => ({ path: e.instancePath, rule: e.keyword, message: e.message })))}`);
   const response = { requestId: request.requestId, task: request.task, ...structuredClone(value), meta };
-  if (request.task === 'profile.report' && response.data) {
-    if (response.data.healthScore !== null) fail('模型应将 healthScore 留空，由程序计算。', 'OUTPUT_INVALID');
-    const scores = response.data.dimensions.map(d => d.score).filter(s => s !== null);
-    response.data.healthScore = scores.length >= 3 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-  }
   try {
     contract.check(request.task === 'profile.inspect' ? 'ProfileInspectResponse' : 'ProfileReportResponse', response);
     audit.responseSchemaPassed = true;
@@ -277,6 +303,37 @@ export function finalizeModel(value, request, meta, contract, audit = {}) {
   try { checkBusiness(response, request); audit.businessChecksPassed = true; }
   catch (error) { audit.businessChecksPassed = false; throw error; }
   return response;
+}
+
+export function compatibleInspection(saved) {
+  if (saved.task !== 'profile.inspect' || !['1.0.0', SCHEMA_VERSION].includes(saved.meta?.schemaVersion)) fail('只允许复用结构未变的已知版本识别结果。');
+  const copy = structuredClone(saved);
+  // Only inspection is structurally unchanged; never migrate or overwrite old reports.
+  copy.meta.schemaVersion = SCHEMA_VERSION;
+  return copy;
+}
+
+export function renderReportMarkdown(response) {
+  const d = response.data;
+  const names = { legibility: '文字可读性', subject_clarity: '主体清晰度', layout_order: '排版秩序', color_harmony: '色彩协调' };
+  // Render prose only; internal evidence objects and ID lists are never displayed.
+  const lines = ['# 主页诊断报告｜方案 B', '', `整体视觉：${d.visualGrade}`, '', d.summary.text,
+    '', '## 门面资产', '', `### 头像｜${d.headerAudit.avatar.status}`, '', d.headerAudit.avatar.feedback,
+    '', `### 背景图｜${d.headerAudit.banner.status}`, '', d.headerAudit.banner.feedback,
+    '', `### 昵称、简介与转化｜${d.headerAudit.bioAndConversion.status}`, '', d.headerAudit.bioAndConversion.clarityFeedback,
+    '', d.headerAudit.bioAndConversion.conversionAdvice, '', '## 封面视觉'];
+  for (const x of d.dimensions) lines.push('', `### ${names[x.key]}｜${x.status}`, '', x.explanation);
+  lines.push('', `## 内容垂直度｜${d.verticalityAudit.status}`, '', d.verticalityAudit.summary);
+  if (d.styleObservation) lines.push('', '## 风格观察', '', d.styleObservation.text);
+  if (d.viralPatterns.length) lines.push('', '## 值得验证的高反馈方向', ...d.viralPatterns.flatMap(x => ['', '- ' + x.hypothesis]));
+  lines.push('', '## 三层选题建议');
+  for (const type of TOPIC_TYPES) {
+    const x = d.topicRecommendations.find(t => t.type === type);
+    lines.push('', `### ${type}：${x.title}`, '', `推荐理由：${x.rationale}`, '', `封面建议：${x.visualAdvice}`);
+  }
+  lines.push('', '## 优先行动', ...d.priorityActions.flatMap(x => ['', '- ' + x.text]));
+  if (response.warnings.length) lines.push('', '## 本次观察的局限', ...response.warnings.flatMap(w => ['', '- ' + w.message]));
+  return lines.join('\n') + '\n';
 }
 
 async function confirmationPayload(options, prepared, contract) {
@@ -291,7 +348,8 @@ async function confirmationPayload(options, prepared, contract) {
   if (!options.confirm || !options.inspection) fail('报告阶段必须指定 --inspection 和 --confirm，或主动选择 --visual-only / --manual。');
   const file = path.resolve(ROOT, options.inspection);
   if (!file.startsWith(path.join(ROOT, 'test-results') + path.sep) || !file.endsWith('.response.json')) fail('请使用 test-results 中的识别结果文件。');
-  const previous = JSON.parse(await fs.readFile(file, 'utf8'));
+  const previous = compatibleInspection(JSON.parse(await fs.readFile(file, 'utf8')));
+  console.log('复用既有人工确认：识别字段结构未变，仅在内存适配协议版本；历史文件不改写。');
   const saved = JSON.parse(await fs.readFile(file.replace(/\.response\.json$/, '.manifest.json'), 'utf8'));
   contract.check('ProfileInspectResponse', previous);
   if (previous.status === 'error') fail('失败的识别结果不能作为确认依据。');
@@ -312,6 +370,7 @@ export async function main() {
     phase: { type: 'string', default: 'inspect' }, inspection: { type: 'string' }, confirm: { type: 'string' },
     manual: { type: 'string' }, 'visual-only': { type: 'boolean' }, 'dry-run': { type: 'boolean' },
     'local-eval-90s': { type: 'boolean' }, 'max-edge': { type: 'string' },
+    replay: { type: 'string' },
   } });
   if (!['inspect', 'report'].includes(values.phase)) fail('phase 只能为 inspect 或 report。');
   if (values.phase === 'inspect' && (values.confirm || values.inspection || values.manual || values['visual-only'])) fail('识别阶段不能携带确认参数。');
@@ -320,7 +379,7 @@ export async function main() {
   const maxEdge = values['max-edge'] === undefined ? null : Number(values['max-edge']);
   const prepared = await prepareImages(positionals.length ? positionals : ['test_profile_1.png', 'test_profile_2.png'], ROOT, maxEdge);
   const task = `profile.${values.phase}`, requestId = `profile_${randomUUID()}`;
-  const request = { schemaVersion: '1.0.0', requestId, task, payload: values.phase === 'inspect' ? { images: prepared.images } : await confirmationPayload(values, prepared, contract) };
+  const request = { schemaVersion: SCHEMA_VERSION, requestId, task, payload: values.phase === 'inspect' ? { images: prepared.images } : await confirmationPayload(values, prepared, contract) };
   contract.check(values.phase === 'inspect' ? 'ProfileInspectRequest' : 'ProfileReportRequest', request);
   if (byteSize(request) > LIMITS.requestBytes) fail('协议请求超过3 MiB。', 'PAYLOAD_TOO_LARGE');
   const prompt = await fs.readFile(path.join(ROOT, 'prompts/profile_system_v1.0.md'), 'utf8');
@@ -338,9 +397,23 @@ export async function main() {
   const started = performance.now(), productBudget = values.phase === 'inspect' ? LIMITS.inspectMs : LIMITS.reportMs;
   const timeout = values['local-eval-90s'] ? LIMITS.reportMs : productBudget;
   const audit = { task, runType: 'offline_evaluation', requestedModel: config.model, schemaSha256: contract.hash, promptSha256: sha(system), timeoutMs: timeout, productBudgetMs: productBudget, localTimeoutOverride: !!values['local-eval-90s'], maxImageEdge: maxEdge, retryCount: 0, firstParsePassed: null, modelSchemaPassed: null, responseSchemaPassed: null, businessChecksPassed: null, factualReview: 'pending_human_review' };
+  audit.executionMode = values.replay ? 'saved_response_replay' : 'live_call';
+  audit.networkCallMade = !values.replay;
   let parsedValue;
   try {
-    const received = await callProvider(body, config, timeout);
+    let received;
+    if (values.replay) {
+      const source = path.resolve(ROOT, values.replay);
+      if (!source.startsWith(directory + path.sep) || !source.endsWith('.raw.txt')) fail('回放仅允许 test-results 内的原始回复。');
+      const originalManifest = JSON.parse(await fs.readFile(source.replace(/\.raw\.txt$/, '.manifest.json'), 'utf8'));
+      if (JSON.stringify(originalManifest) !== JSON.stringify(prepared.manifest)) fail('回放截图指纹与原请求不一致。');
+      const originalAudit = JSON.parse(await fs.readFile(source.replace(/\.raw\.txt$/, '.audit.json'), 'utf8'));
+      if (originalAudit.task !== task || originalAudit.schemaSha256 !== contract.hash || originalAudit.promptSha256 !== sha(system)) fail('回放任务、协议或 Prompt 不一致；不能把历史回复标记成新版本输出。');
+      const raw = await fs.readFile(source, 'utf8');
+      if (raw.includes(config.key) || Buffer.byteLength(raw) > LIMITS.responseBytes) fail('回放文本未通过安全检查。');
+      received = {raw,returnedModel:null}; audit.replaySource = path.basename(source); audit.originalDurationMs = originalAudit.durationMs;
+      console.log('本地历史响应回放：没有再次请求模型；不计为新模型成功样本或推理耗时。');
+    } else received = await callProvider(body, config, timeout);
     await save('raw.txt', received.raw);
     console.log('模型原始输出（尚未清理或校验）：');
     console.log(received.raw);
@@ -355,7 +428,7 @@ export async function main() {
     }
     console.log(`原始 JSON 解析：${parsed.firstParsePassed ? '通过' : '失败'}；清洗/修复：${parsed.cleaning}`);
     audit.modelSchemaPassed = contract.models[task](parsed.value);
-    const meta = { schemaVersion: '1.0.0', promptVersion: `profile_${values.phase}_v1.0.0`, modelId: received.returnedModel || config.model, runType: 'offline_evaluation', durationMs: Math.round(performance.now() - started), retryCount: 0 };
+    const meta = { schemaVersion: SCHEMA_VERSION, promptVersion: `profile_${values.phase}_v${PROMPT_VERSION}`, modelId: received.returnedModel || config.model, runType: 'offline_evaluation', durationMs: Math.round(performance.now() - started), retryCount: 0 };
     const response = finalizeModel(parsed.value, request, meta, contract, audit);
     audit.returnedModel = received.returnedModel;
     await save('response.json', JSON.stringify(response, null, 2));
@@ -363,6 +436,11 @@ export async function main() {
     console.log('模型字段校验：通过；完整 Response 协议校验：通过；引用/业务规则校验：通过');
     console.log('注意：字段通过不等于识图事实正确，请人工核查。');
     console.log(JSON.stringify(response, null, 2));
+    if (task === 'profile.report' && response.data) {
+      const markdown = renderReportMarkdown(response);
+      await save('report.md', markdown);
+      console.log(markdown);
+    }
     console.log(`结果文件：${prefix}.response.json`);
     if (response.status === 'error') process.exitCode = 1;
     else if (task === 'profile.inspect') console.log('已停在轻量确认阶段。请确认1～3个 candidateId，或选择仅视觉诊断；没有自动生成报告。');
@@ -376,7 +454,7 @@ export async function main() {
     }
     const failure = { requestId, task, status: 'error', data: null, warnings: [],
       error: { code: error instanceof TestError ? error.code : 'OUTPUT_INVALID', message: safe.slice(0, 200), retryable: ['TIMEOUT', 'NETWORK_INTERRUPTED', 'RATE_LIMITED', 'UPSTREAM_UNAVAILABLE'].includes(error.code), fieldPath: null },
-      meta: { schemaVersion: '1.0.0', promptVersion: `profile_${values.phase}_v1.0.0`, modelId: config.model, runType: 'offline_evaluation', durationMs: Math.round(performance.now() - started), retryCount: 0 } };
+      meta: { schemaVersion: SCHEMA_VERSION, promptVersion: `profile_${values.phase}_v${PROMPT_VERSION}`, modelId: config.model, runType: 'offline_evaluation', durationMs: Math.round(performance.now() - started), retryCount: 0 } };
     contract.check(values.phase === 'inspect' ? 'ProfileInspectResponse' : 'ProfileReportResponse', failure);
     audit.localErrorEnvelopeSchemaPassed = true;
     await save('response.json', JSON.stringify(failure, null, 2));
