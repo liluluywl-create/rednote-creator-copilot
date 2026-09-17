@@ -2,7 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:creator-copilot:protocol:2.0.0",
   "title": "Creator Copilot V1.0 MVP normative contract",
-  "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6.",
+  "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6. The current MVP implements only profile.* and post.*; viral.* definitions are deprecated Post-MVP reservations and must not be exposed by current routes or UI.",
+  "$comment": "MVP scope decision 2026-09-17: Feature 3 viral reverse-engineering is pruned. Retained viral definitions are non-active compatibility reservations, not implementation requirements.",
   "oneOf": [
     {
       "$ref": "#/$defs/Request"
@@ -149,6 +150,12 @@
           ],
           "minLength": 1,
           "maxLength": 120
+        },
+        "inspirationOrWishes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Optional creator-provided inspiration, IP reference, cultural association, or wish. It may guide narrative tone but does not prove official authorization or external facts."
         },
         "confirmedTags": {
           "type": "array",

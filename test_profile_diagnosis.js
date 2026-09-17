@@ -14,8 +14,8 @@ const TOPIC_TYPES = ['稳健深耕款', '场景破圈款', '高搜痛点/情绪�
 export const LIMITS = Object.freeze({
   originalBytes: 10 * 1024 ** 2, originalTotal: 30 * 1024 ** 2,
   imageBytes: 1024 ** 2, imageTotal: 2 * 1024 ** 2, requestBytes: 3 * 1024 ** 2,
-  pixels: 12_000_000, totalPixels: 24_000_000, side: 10_000,
-  inspectMs: 8_000, reportMs: 90_000, inspectTokens: 1500, reportTokens: 6000,
+  sourcePixels: 20_000_000, pixels: 12_000_000, totalPixels: 24_000_000, side: 10_000,
+  inspectMs: 8_000, reportMs: 90_000, inspectTokens: 1500, reportTokens: 6000, postGenerateTokens: 10_000,
   responseBytes: 2 * 1024 ** 2, qualities: [85, 80, 75, 70],
   baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
 });
@@ -37,7 +37,9 @@ export function validateConfig(env) {
 // Model responsibility is a projection of the existing Response, not a new API.
 export function modelSchema(protocol, task) {
   const response = protocol.$defs.Response;
-  const dataName = task === 'profile.inspect' ? 'ProfileInspection' : 'ProfileReport';
+  const dataNames = { 'profile.inspect': 'ProfileInspection', 'profile.report': 'ProfileReport', 'post.inspect': 'PostInspection', 'post.generate': 'PostResult' };
+  const dataName = dataNames[task];
+  if (!dataName) fail(`暂不支持模型协议任务：${task}`);
   const schema = {
     $schema: protocol.$schema, type: 'object', additionalProperties: false,
     required: ['status', 'data', 'warnings', 'error'],
@@ -70,7 +72,7 @@ export async function createContract(root = ROOT) {
   // No coercion, default insertion, field removal or schema alteration is allowed.
   const ajv = new Ajv2020({ allErrors: true, strictTypes: false, strictRequired: false });
   addFormats(ajv); ajv.addSchema(protocol);
-  const models = Object.fromEntries(['profile.inspect', 'profile.report'].map(task => [task, ajv.compile(modelSchema(protocol, task))]));
+  const models = Object.fromEntries(['profile.inspect', 'profile.report', 'post.inspect', 'post.generate'].map(task => [task, ajv.compile(modelSchema(protocol, task))]));
   const check = (name, value) => {
     const validate = ajv.getSchema(`${protocol.$id}#/$defs/${name}`);
     if (!validate || !validate(value)) {
@@ -219,7 +221,9 @@ export async function prepareImages(names, root = ROOT, maxEdge = null) {
     const original = await fs.readFile(file), fingerprint = sha(original);
     if (hashes.has(fingerprint)) fail('两张输入完全重复，请移除重复图。');
     hashes.add(fingerprint);
-    const input = sharp(original, { limitInputPixels: LIMITS.pixels, failOn: 'warning' });
+    // Source photos may exceed the transmission budget; decode within a separate
+    // safety ceiling, then enforce the stricter output pixel budget below.
+    const input = sharp(original, { limitInputPixels: LIMITS.sourcePixels, failOn: 'warning' });
     const meta = await input.metadata();
     if (!['png', 'jpeg', 'webp'].includes(meta.format) || (meta.pages ?? 1) > 1) fail('仅支持静态 PNG、JPEG、WebP。', 'UNSUPPORTED_IMAGE');
     if (!meta.width || !meta.height || Math.min(meta.width, meta.height) < 16 || Math.max(meta.width, meta.height) > LIMITS.side) fail('图片尺寸超限。', 'PAYLOAD_TOO_LARGE');
@@ -237,7 +241,7 @@ export async function prepareImages(names, root = ROOT, maxEdge = null) {
     }
     const { data, info } = encoded;
     total += data.length; pixels += info.width * info.height;
-    if (data.length > LIMITS.imageBytes || total > LIMITS.imageTotal || pixels > LIMITS.totalPixels) fail('保留文字可读性的压缩副本仍超限，请减少图片。', 'PAYLOAD_TOO_LARGE');
+    if (data.length > LIMITS.imageBytes || info.width * info.height > LIMITS.pixels || total > LIMITS.imageTotal || pixels > LIMITS.totalPixels) fail('保留文字可读性的压缩副本仍超限，请减少图片。', 'PAYLOAD_TOO_LARGE');
     const image = { imageId: `image_${index + 1}`, mimeType: `image/${info.format}`, base64: data.toString('base64'), width: info.width, height: info.height, byteLength: data.length };
     images.push(image);
     manifest.push({ imageId: image.imageId, fileName: path.basename(file), originalSha256: fingerprint, transmittedSha256: sha(data), originalBytes: original.length, transmittedBytes: data.length, width: info.width, height: info.height });
@@ -249,7 +253,8 @@ export function makeProviderBody(request, system, model) {
   const { images, ...fields } = request.payload;
   const content = [{ type: 'text', text: JSON.stringify({ task: request.task, payload: { ...fields, images: images.map(({ base64: _omitted, ...metadata }) => metadata) } }) }];
   for (const image of images) content.push({ type: 'text', text: `以下图片的 imageId=${image.imageId}` }, { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.base64}` } });
-  return { model, stream: false, max_tokens: request.task === 'profile.inspect' ? LIMITS.inspectTokens : LIMITS.reportTokens,
+  const maxTokens = request.task === 'post.generate' ? LIMITS.postGenerateTokens : request.task.endsWith('.inspect') ? LIMITS.inspectTokens : LIMITS.reportTokens;
+  return { model, stream: false, max_tokens: maxTokens,
     thinking: { type: 'disabled' }, messages: [{ role: 'system', content: system }, { role: 'user', content }] };
 }
 

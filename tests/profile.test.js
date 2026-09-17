@@ -154,6 +154,11 @@ test('provider receives two image_url blocks in one user message, no key in body
   assert.equal(body.messages[1].content.filter(v => v.type === 'image_url').length, 2);
   assert.equal(body.stream, false); assert.equal(body.max_tokens, 1500);
 });
+test('model protocol projection supports both post stages and post generation token budget', () => {
+  assert.ok(contract.models['post.inspect']); assert.ok(contract.models['post.generate']);
+  const request={...input,task:'post.generate',payload:{...input.payload,primaryImageId:'image_1',brief:{},publishing:{}}};
+  assert.equal(makeProviderBody(request,'rules','test-model').max_tokens,10000);
+});
 test('explicit image resize preserves originals, aspect ratio and JPEG metadata', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'profile-resize-'));
   const bytes = await sharp({ create: { width: 1206, height: 2622, channels: 3, background: '#abcdef' } }).png().toBuffer();
@@ -164,6 +169,14 @@ test('explicit image resize preserves originals, aspect ratio and JPEG metadata'
   const decoded = await sharp(Buffer.from(images[0].base64, 'base64')).metadata();
   assert.equal(decoded.width, 552); assert.equal(decoded.height, 1200);
   await assert.rejects(() => prepareImages(['synthetic.png'], dir, Number.NaN));
+});
+test('source photo may exceed 12MP only when resized transmission copy is within budget', async () => {
+  const dir=await mkdtemp(path.join(os.tmpdir(),'profile-large-source-'));
+  const bytes=await sharp({create:{width:4032,height:3024,channels:3,background:'#abcdef'}}).jpeg().toBuffer();
+  await writeFile(path.join(dir,'phone.jpg'),bytes);
+  const resized=await prepareImages(['phone.jpg'],dir,1200);
+  assert.equal(resized.images[0].width,1200); assert.equal(resized.images[0].height,900);
+  await assert.rejects(()=>prepareImages(['phone.jpg'],dir));
 });
 test('mock HTTP integration succeeds without printing reasoning or provider envelope', async () => {
   let count = 0;
