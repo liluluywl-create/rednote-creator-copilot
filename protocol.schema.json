@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:creator-copilot:protocol:2.0.0",
+  "$id": "urn:creator-copilot:protocol:2.1.0",
   "title": "Creator Copilot V1.0 MVP normative contract",
-  "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6. The current MVP implements only profile.* and post.*; viral.* definitions are deprecated Post-MVP reservations and must not be exposed by current routes or UI.",
-  "$comment": "MVP scope decision 2026-09-17: Feature 3 viral reverse-engineering is pruned. Retained viral definitions are non-active compatibility reservations, not implementation requirements.",
+  "description": "Root accepts an API request, API response, local draft, or local idea library. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6. The current MVP implements profile.* and post.* model calls plus a local idea-library workspace; viral.* definitions are deprecated Post-MVP reservations and must not be exposed by current routes or UI.",
+  "$comment": "MVP scope decision 2026-09-18: the mobile IA uses Copy, Ideas, and Profile tabs. Ideas persist profile-report recommendations locally; no third model endpoint is added. Feature 3 viral reverse-engineering remains pruned.",
   "oneOf": [
     {
       "$ref": "#/$defs/Request"
@@ -13,6 +13,9 @@
     },
     {
       "$ref": "#/$defs/LocalDraft"
+    },
+    {
+      "$ref": "#/$defs/IdeaLibrary"
     }
   ],
   "$defs": {
@@ -473,7 +476,7 @@
       ],
       "properties": {
         "schemaVersion": {
-          "const": "2.0.0"
+          "const": "2.1.0"
         },
         "requestId": {
           "$ref": "#/$defs/Id"
@@ -742,6 +745,110 @@
         }
       }
     },
+    "TopicRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "title",
+        "rationale",
+        "craftOrMaterialTip",
+        "visualAdvice",
+        "basisEvidenceIds"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "稳健深耕线",
+            "时令节律与场景送礼线",
+            "跨界联动与流行混搭线"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "craftOrMaterialTip": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "visualAdvice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "basisEvidenceIds": {
+          "$ref": "#/$defs/EvidenceIds",
+          "minItems": 1
+        }
+      }
+    },
+    "IdeaLibraryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaId",
+        "sourceDraftId",
+        "sourceRequestId",
+        "recommendation",
+        "isFavorite",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "ideaId": {
+          "$ref": "#/$defs/Id"
+        },
+        "sourceDraftId": {
+          "$ref": "#/$defs/Id"
+        },
+        "sourceRequestId": {
+          "$ref": "#/$defs/Id"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/TopicRecommendation"
+        },
+        "isFavorite": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "IdeaLibrary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cacheVersion",
+        "items"
+      ],
+      "properties": {
+        "cacheVersion": {
+          "const": "1.0.0"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 60,
+          "items": {
+            "$ref": "#/$defs/IdeaLibraryItem"
+          }
+        }
+      }
+    },
     "ProfileReport": {
       "type": "object",
       "additionalProperties": false,
@@ -984,6 +1091,7 @@
               "type",
               "title",
               "rationale",
+              "craftOrMaterialTip",
               "visualAdvice",
               "basisEvidenceIds"
             ],
@@ -991,9 +1099,9 @@
               "type": {
                 "type": "string",
                 "enum": [
-                  "稳健深耕款",
-                  "场景破圈款",
-                  "高搜痛点/情绪送礼款"
+                  "稳健深耕线",
+                  "时令节律与场景送礼线",
+                  "跨界联动与流行混搭线"
                 ]
               },
               "title": {
@@ -1002,6 +1110,11 @@
                 "maxLength": 50
               },
               "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "craftOrMaterialTip": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 300
@@ -1026,7 +1139,7 @@
                 ],
                 "properties": {
                   "type": {
-                    "const": "稳健深耕款"
+                    "const": "稳健深耕线"
                   }
                 }
               },
@@ -1041,7 +1154,7 @@
                 ],
                 "properties": {
                   "type": {
-                    "const": "场景破圈款"
+                    "const": "时令节律与场景送礼线"
                   }
                 }
               },
@@ -1056,7 +1169,7 @@
                 ],
                 "properties": {
                   "type": {
-                    "const": "高搜痛点/情绪送礼款"
+                    "const": "跨界联动与流行混搭线"
                   }
                 }
               },
@@ -1713,7 +1826,7 @@
       ],
       "properties": {
         "schemaVersion": {
-          "const": "2.0.0"
+          "const": "2.1.0"
         },
         "promptVersion": {
           "type": "string",
@@ -2175,6 +2288,17 @@
               "type": "null"
             }
           ]
+        },
+        "sourceIdeaId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional local idea-library source for a post draft. It is never sent as a model fact by itself."
         },
         "brief": {
           "anyOf": [

@@ -8,9 +8,9 @@ import addFormats from 'ajv-formats';
 import sharp from 'sharp';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-export const SCHEMA_VERSION = '2.0.0';
-const PROMPT_VERSION = '2.0.1';
-const TOPIC_TYPES = ['稳健深耕款', '场景破圈款', '高搜痛点/情绪送礼款'];
+export const SCHEMA_VERSION = '2.1.0';
+const PROMPT_VERSION = '2.1.0';
+const TOPIC_TYPES = ['稳健深耕线', '时令节律与场景送礼线', '跨界联动与流行混搭线'];
 export const LIMITS = Object.freeze({
   originalBytes: 10 * 1024 ** 2, originalTotal: 30 * 1024 ** 2,
   imageBytes: 1024 ** 2, imageTotal: 2 * 1024 ** 2, requestBytes: 3 * 1024 ** 2,
@@ -198,13 +198,18 @@ export function checkBusiness(response, request) {
     const labels = new Set(request.payload.representatives.map(r => r.label));
     if (request.payload.manualRepresentative) labels.add(request.payload.manualRepresentative);
     if (data.viralPatterns.some(p => p.representativeLabels.some(label => !labels.has(label)))) fail('规律引用了未确认作品。', 'OUTPUT_INVALID');
-    if (new Set(data.topicRecommendations.map(t => t.type)).size !== 3) fail('三个选题层级必须各出现一次。', 'OUTPUT_INVALID');
+    const topicTypes = new Set(data.topicRecommendations.map(t => t.type));
+    if (TOPIC_TYPES.some(type => !topicTypes.has(type)) || topicTypes.size !== TOPIC_TYPES.length) fail('三个选题维度必须各出现一次。', 'OUTPUT_INVALID');
+    const byType = Object.fromEntries(data.topicRecommendations.map(t => [t.type, t]));
+    if (!/延展|家族|形态|品类|核心|系列/.test(byType['稳健深耕线'].rationale + byType['稳健深耕线'].craftOrMaterialTip)) fail('稳健深耕线缺少能力圈延展逻辑。', 'OUTPUT_INVALID');
+    if (!/春|夏|秋|冬|季|节日|开学|毕业|送礼|冷暖/.test(byType['时令节律与场景送礼线'].rationale)) fail('时令节律线缺少明确时间或送礼节点。', 'OUTPUT_INVALID');
+    if (!/跨界|混搭|串珠|金属|配件|材质|流行色|美学|IP/.test(byType['跨界联动与流行混搭线'].rationale + byType['跨界联动与流行混搭线'].craftOrMaterialTip)) fail('跨界联动线缺少具体混搭方向。', 'OUTPUT_INVALID');
     // User-facing prose cannot leak internal evidence identifiers or numerical ratings.
     const prose = [data.summary.text, data.styleObservation?.text, ...data.dimensions.map(d => d.explanation),
       data.headerAudit.avatar.feedback, data.headerAudit.banner.feedback, data.headerAudit.bioAndConversion.clarityFeedback,
       data.headerAudit.bioAndConversion.conversionAdvice, data.verticalityAudit.summary,
       ...data.viralPatterns.map(p => p.hypothesis), ...data.priorityActions.map(p => p.text),
-      ...data.topicRecommendations.flatMap(t => [t.title, t.rationale, t.visualAdvice]), ...response.warnings.map(w => w.message)];
+      ...data.topicRecommendations.flatMap(t => [t.title, t.rationale, t.craftOrMaterialTip, t.visualAdvice]), ...response.warnings.map(w => w.message)];
     if (prose.some(s => s && (/\be\d+\b/i.test(s) || /扣\s*\d+\s*分|\d+\s*\/\s*100/.test(s)))) fail('面向用户的正文包含证据代码或数值评分。', 'OUTPUT_INVALID');
   }
 }
@@ -311,7 +316,7 @@ export function finalizeModel(value, request, meta, contract, audit = {}) {
 }
 
 export function compatibleInspection(saved) {
-  if (saved.task !== 'profile.inspect' || !['1.0.0', SCHEMA_VERSION].includes(saved.meta?.schemaVersion)) fail('只允许复用结构未变的已知版本识别结果。');
+  if (saved.task !== 'profile.inspect' || !['1.0.0', '2.0.0', SCHEMA_VERSION].includes(saved.meta?.schemaVersion)) fail('只允许复用结构未变的已知版本识别结果。');
   const copy = structuredClone(saved);
   // Only inspection is structurally unchanged; never migrate or overwrite old reports.
   copy.meta.schemaVersion = SCHEMA_VERSION;
@@ -331,10 +336,10 @@ export function renderReportMarkdown(response) {
   lines.push('', `## 内容垂直度｜${d.verticalityAudit.status}`, '', d.verticalityAudit.summary);
   if (d.styleObservation) lines.push('', '## 风格观察', '', d.styleObservation.text);
   if (d.viralPatterns.length) lines.push('', '## 值得验证的高反馈方向', ...d.viralPatterns.flatMap(x => ['', '- ' + x.hypothesis]));
-  lines.push('', '## 三层选题建议');
+  lines.push('', '## 选题灵感');
   for (const type of TOPIC_TYPES) {
     const x = d.topicRecommendations.find(t => t.type === type);
-    lines.push('', `### ${type}：${x.title}`, '', `推荐理由：${x.rationale}`, '', `封面建议：${x.visualAdvice}`);
+    lines.push('', `### ${type}：${x.title}`, '', `推荐理由：${x.rationale}`, '', `工艺／材质建议：${x.craftOrMaterialTip}`, '', `封面建议：${x.visualAdvice}`);
   }
   lines.push('', '## 优先行动', ...d.priorityActions.flatMap(x => ['', '- ' + x.text]));
   if (response.warnings.length) lines.push('', '## 本次观察的局限', ...response.warnings.flatMap(w => ['', '- ' + w.message]));

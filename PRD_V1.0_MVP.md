@@ -5,26 +5,26 @@
 | 项目 | 定义 |
 |---|---|
 | 项目名称 | 创作者工具（Creator Copilot，工作名） |
-| 版本 | V1.0 MVP 方案 B；协议版本 `2.0.0`；缓存格式版本 `1.0.0`（旧报告不自动迁移） |
-| 日期 | 2026-09-17 |
+| 版本 | V1.0 MVP IA 2.1；协议版本 `2.1.0`；缓存格式版本 `1.0.0`（旧报告不自动迁移） |
+| 日期 | 2026-09-18 |
 | 文档维护人 | 产品负责人：项目发起人；AI 协助整理，不替代产品负责人的变更确认 |
 | 适用范围 | 移动端优先 Web / PWA；手工编织与泛生活创作者首发样板 |
-| 文档状态 | MVP 范围已收敛为主页诊断与成品文案两项；两项本地端到端 Schema 走查已通过；前端尚未开发或上线 |
+| 文档状态 | 移动端三栏 IA 已锁定；保留主页诊断与成品文案两条 AI 调用链，选题灵感为独立本地工作区；前端尚未开发或上线 |
 | 单一事实来源 | 本文正文、业务不变量及文末完整 JSON Schema 共同构成规范；独立 `protocol.schema.json` 是附录镜像，必须保持逐字一致 |
 
 ### 1.1 背景与问题
 
 发起人是拥有 900+ 粉丝的手工编织／生活类小红书创作者，反馈的问题包括断更、封面包装欠佳、成功内容难以复用、创作耗时过长。这是发起人的自述，不代表已完成大样本用户研究。
 
-产品帮助创作者完成两件核心任务：看清主页视觉与门面表达的问题；将自己的作品转成三套可比较、可编辑的发布图文。交付对象是诊断报告、封面排版方案和可编辑文案，不是无边界聊天记录。
+产品围绕三个连续工作区组织体验：用主页体检发现账号与内容机会；把诊断产生的选题沉淀到灵感库并按周取用；将已经完成的作品转成三套可比较、可编辑的发布图文。模型调用仍聚焦主页诊断和成品文案，灵感库承担结构化沉淀、收藏与跨栏跳转，不是第三个聊天机器人。
 
 价值目标是减少从素材到可用草稿的操作与时间，提高表达质量和用户采纳。不得承诺爆款、涨粉、真实点击率或转化提升；未实测的数值一律标记为目标。
 
 ### 1.2 决策基线与范围
 
-**纳入 T0：** 两个同等入口；长截图／多截图直接识别；疑似高反馈作品轻量确认；渐进式可选表单；成品三套方案横滑对比；原照片有限裁切与文字排版；可选批注与手动编辑；3:4 图像区仿真预览；复制文案、保存封面；本机自动保存和首页历史记录。
+**纳入 T0：** 移动端底部三栏导航（文案助手／选题灵感／主页体检）；长截图／多截图直接识别；疑似高反馈作品轻量确认；三维选题卡自动沉淀、卡片收藏与“去写文案”；渐进式可选表单；成品三套方案横滑对比；原照片有限裁切与文字排版；可选批注与手动编辑；3:4 图像区仿真预览；复制文案、保存封面；本机自动保存和最近记录。
 
-**不纳入 T0：** 爆款对标拆解与仿写（Feature 3，已废弃并转入 Post-MVP 备忘，不进入当前设计、开发、Prompt、测试或验收）；登录、账户、跨设备同步、用户可见创作者档案、长期风格画像、爬虫、笔记链接自动抓取、视频解析、复杂图像编辑、作品重绘、自动发布、趋势热榜检索、收藏体系、跨方案拼装、多代理编排、向量数据库、RAG、复杂后台管理。
+**不纳入 T0：** 爆款对标拆解与仿写（Feature 3，已废弃并转入 Post-MVP 备忘，不进入当前设计、开发、Prompt、测试或验收）；登录、账户、跨设备同步、用户可见创作者档案、长期风格画像、爬虫、笔记链接自动抓取、视频解析、复杂图像编辑、作品重绘、自动发布、趋势热榜检索、跨模块通用收藏系统、跨方案拼装、多代理编排、向量数据库、RAG、复杂后台管理。选题卡收藏是灵感库内的轻量本地状态，不扩展为全产品收藏体系。
 
 本版替换以下旧决策：取消坐标与赞藏数校对；取消生成中途追问；取消必须先读拆解再生成；取消上一版关于配套 IndexedDB 的建议。**按最新约束，仅 localStorage 持久化文字与状态，原图不持久化。刷新后继续编辑图片需要重新上传。** 这是明确的范围取舍，不得在 UI 中隐藏。
 
@@ -36,6 +36,7 @@
 | V1.0 MVP 本地走查补记（2026-09-15） | 用户确认首轮供应商为火山方舟，模型配置为 doubao-seed-evolving；沿用协议1.0.0与识别→人工确认→报告，不改变字段、图片限额或等待预算 |
 | 方案 B（协议2.0.0） | 移除全部主页数值评分；增加门面与垂直度诊断；三层选题；正文隐藏证据代码。旧报告不迁移；旧识别结构不变，仅在内存显式适配版本后复用人工确认。 |
 | MVP 范围收敛（2026-09-17） | 正式取消 Feature 3 爆款对标拆解与仿写；当前产品、前端与验收只覆盖主页诊断和成品图三风格文案生成。保留的 `viral.*` 字段仅为历史／Post-MVP 协议预留，不构成实现要求。 |
+| IA 与选题升级（协议2.1.0，2026-09-18） | 建立文案助手／选题灵感／主页体检三栏；主页选题自动进入本地灵感库并可收藏、带入文案助手；选题输出升级为稳健、时令、跨界三维并增加 craftOrMaterialTip。旧2.0.0报告不自动迁移。 |
 
 ### 1.4 当前核心资产状态
 
@@ -43,6 +44,7 @@
 |---|---|---|---|
 | 功能一：主页视觉与门面诊断 | 端到端 Schema 走查已通过 | 多图输入、代表作品轻确认、定性报告、证据与业务规则 | Next.js 移动端页面与报告组件 |
 | 功能二：成品图三风格文案生成 | 端到端 Schema 走查已通过 | 三图输入、可选灵感字段、三套差异化第一人称文案、事实引用与业务规则 | Next.js 横滑比较、编辑与预览组件 |
+| 选题灵感工作区 | 协议与本地数据规则已定义 | 三维卡片 Schema、来源追溯、收藏状态、去写文案映射；尚未重新调用模型验证2.1.0输出 | Next.js 卡片流、筛选、收藏与跨栏带入 |
 | 功能三：爆款对标拆解与仿写 | 已废弃／Post-MVP | 未建独立测试脚本，不纳入当前评测 | 当前无开发计划；若未来重启须重新立项与评审抄袭风险 |
 
 下一次改变输入必填项、字段含义、返回结构、缓存行为、生成次数或功能范围，必须同时更新本 PRD、协议和对应样例。模型、Prompt 或过滤规则调整必须记录版本与回归结果。不可直接以临时聊天内容覆盖已发布基线；先将决定写回文档。每次开发、接口接入、Prompt 调试前通读对应功能章节、3.6 业务不变量、5—6 章及协议附录。
@@ -61,6 +63,7 @@ T0 不根据粉丝量评判创作能力，不推断商业身份或收入；“�
 |---|---|---|---|
 | 不知道主页哪里需要改 | 首页→上传截图→勾选代表作品或仅做视觉诊断→报告 | 看到有截图依据的观察和优先建议 | 用户能说出至少一个下一步动作；无需填赞藏数 |
 | 有成品但不想写文案 | 首页→上传照片→可选补充→三套方案→选一版→预览／编辑→复制与保存 | 第一套完整可用方案可阅读时 | 有与原作品一致的封面和文案，复制成功有反馈 |
+| 想规划下一件作品 | 选题灵感→按三维浏览或查看收藏→打开选题卡→去写文案 | 看见推荐理由与可执行工艺／材质建议时 | 新建文案草稿并带入选题方向；不会覆盖已有未完成草稿 |
 | 被打断后继续 | 首页历史→恢复上次草稿 | 看到已保存文字和选择状态时 | 文案继续编辑；需用图片时按占位提示补传原图 |
 
 典型旅程中的批注、展开依据、安装 PWA 均为可选动作，不是主链路门槛。
@@ -71,9 +74,9 @@ T0 不根据粉丝量评判创作能力，不推断商业身份或收入；“�
 
 采用 Beyond Chatbot：自然语言用于表达卖点、主题和风格要求，图形界面承担上传、选择、比较、编辑和导出。不设置持续追问的聊天窗口。
 
-页面为：首页、主页诊断页、成品优化页，共用编辑面板与预览层。历史在首页下部展开，不新增账户页和复杂工作台。加载、确认、结果是页内状态，不增加路由步骤。
+移动端应用壳固定三栏底部导航，顺序为：Tab 1 文案助手、Tab 2 选题灵感、Tab 3 主页体检。首次打开默认进入文案助手；切换 Tab 保留各栏本地状态，不以返回键制造多层页面栈。编辑面板、预览层和异常提示为共享组件，不新增账户页和复杂工作台。
 
-主页诊断：上传→识别骨架屏→标签轻确认→报告。成品优化：上传与渐进式表单→一次生成→三套比较→预览。两个模块彼此独立，不得互设前置条件。
+文案助手：上传与渐进式表单→一次生成→三套比较→预览。选题灵感：读取本地卡片→筛选／收藏→去写文案→切换至文案助手的新草稿。主页体检：上传→识别骨架屏→标签轻确认→报告→三张选题卡自动沉淀至灵感库。主页体检不是使用灵感库或文案助手的强制前置；灵感库为空时展示清晰空状态和“去做主页体检”，文案助手始终可直接使用。
 
 ### 3.2 轻量架构与信任边界
 
@@ -125,7 +128,7 @@ Feature 3 的 `viral.generate` 不参与当前模型选择、调用、测试或�
 | 自动重试 | 每个正式生成请求最多 1 次；格式修复、语义修复、网络重试共享该预算 |
 | 输出 token 上限 | profile.inspect 1,500；post.inspect 1,500；profile.report 6,000；post.generate 10,000 |
 | 图片压缩质量起点 | 照片等比压缩质量 0.85，可降至 0.70；截图优先保留文字可读性，不能只靠低质量压缩过限 |
-| 本工具持久化预算 | 总估算 ≤2 MiB；最多 20 条草稿；单草稿 ≤256 KiB；以先触及的上限为准 |
+| 本工具持久化预算 | 总估算 ≤2 MiB；最多 20 条草稿、60 张灵感卡；单草稿 ≤256 KiB；以先触及的上限为准 |
 | 自动保存 | 输入暂停 500ms 后保存；结果到达、方案切换、页面内导航时立即保存 |
 | 本地行为事件 | 最多 500 条且 ≤64 KiB，保留最近 30 天；容量计入上述总预算 |
 | 三方案相似度复核 | 标题与开篇过于接近时判定方案区分不足；阈值集中配置，不散落在组件中 |
@@ -162,7 +165,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 3. primaryImageId 必须属于本次用户上传图片；无图片时为 null。所有 sourceImageIds 必须能在当前请求中找到。
 4. 每个 evidenceId 均可解析。`sourceType=user_field` 的 sourceId 是当前 Request 中存在且非空的 JSON Pointer；image 引用当前图 ID。user_field 才可支持耗时、材料成分、真实经历等不可直接观察事实。
 5. 标题、封面大字、正文中的每条可核实事实必须进入 claims，且引用真正支持它的证据。图像只支持可见外观，不证明耗时、材质、失败次数。模型漏报事实 ledger 也算错误，不能以“claims 为空”逃过检查。
-6. 四个视觉维度 key 各出现一次，status 为优秀/良好/待优化/无法判断；移除所有数值评分及等权计算。visualGrade 为优秀/良好/待优化，仅针对可见整体。无法判断项返回 partial 与 warning，不以待优化替代未知；全部不可判断返回 error。所有有判断的项目必须关联证据。三层 topicRecommendations 各一次，不得用未确认作品推导高反馈规律。
+6. 四个视觉维度 key 各出现一次，status 为优秀/良好/待优化/无法判断；移除所有数值评分及等权计算。visualGrade 为优秀/良好/待优化，仅针对可见整体。无法判断项返回 partial 与 warning，不以待优化替代未知；全部不可判断返回 error。所有有判断的项目必须关联证据。topicRecommendations 必须恰好包含稳健深耕线、时令节律与场景送礼线、跨界联动与流行混搭线各一次，每张卡必须有可执行的 craftOrMaterialTip；不得用未确认作品推导高反馈规律，也不得把常识性节点包装成实时趋势。
 7. visual_only 不输出高反馈规律。representative_review 的规律只能关联用户选中或明确手填的作品；看不出依据时留空并发 warning。人工名称与已选标签合计按最多 3 个代表作品处理。
 8. 成品 success 必须是 pain_point、emotion、curiosity 各一套；partial 仅允许 1～2 套，missingAngles 恰为缺失方向。每套正文与互动结尾不重复，合计不超过 800 字。
 9. Feature 3 已退出 MVP。任何 `viral.*` 请求均不得进入当前公开路由或前端；历史协议预留不计入当前成功率、测试覆盖率或交付范围。
@@ -176,15 +179,17 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 ## 4. 详细功能规格说明
 
-### 4.1 首页全局框架与草稿缓存中心
+### 4.1 移动端全局框架、本地草稿与灵感状态
 
-**目标与前置条件。** 用户打开即能选择任务或继续草稿，无登录和档案填写。两个入口同权重、同信息密度，不默认突出某个模块；历史位于入口下部。
+**目标与前置条件。** 用户打开即进入高频的文案助手，无登录和档案填写。底部 Tab 是唯一一级导航，固定顺序为：文案助手、选题灵感、主页体检。三栏是三个用户工作区，但当前只有 `profile.*` 与 `post.*` 两条 AI 调用链；选题灵感负责展示和流转主页报告已经生成的结构化卡片，不新增第三个模型接口。
 
 #### 页面字段与回显
 
 | 字段 / 组件 | 规则 |
 |---|---|
-| 任务入口 | 固定两个：主页诊断、成品图文优化；各一句输入与输出说明 |
+| 一级导航 | 固定三栏：文案助手（默认／高频日用）、选题灵感（中频周用）、主页体检（低频月用） |
+| Tab 状态 | 切换时保留本栏滚动位置、表单与未提交编辑；不创建新的历史草稿，不把 Tab 切换做成浏览器多层返回栈 |
+| 最近记录 | 文案助手显示最近创作草稿，主页体检显示最近诊断；灵感库按收藏优先、其余按更新时间倒序 |
 | 历史记录 kind | 当前只新建 `profile / post`；历史 `viral` 仅用于兼容旧本地数据，不提供继续生成入口 |
 | 历史标题 title | 来自选定标题、主题或“未命名草稿”；≤60 字；不让模型另外命名任务 |
 | updatedAt | 本地更新时间，倒序；机器数据为带时区时间戳 |
@@ -196,7 +201,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 #### 缓存契约与生命周期
 
-使用本工具专属命名空间：`creator_copilot:v1:index` 存 CacheIndex，`creator_copilot:v1:draft:<draftId>` 存 LocalDraft，`creator_copilot:v1:events` 存 LocalEvent 列表。完整定义见附录 `CacheIndex / LocalDraft / Snapshot / EditedDraft / ImageManifest / LocalEvent`。
+使用本工具专属命名空间：`creator_copilot:v1:index` 存 CacheIndex，`creator_copilot:v1:draft:<draftId>` 存 LocalDraft，`creator_copilot:v1:ideas` 存 IdeaLibrary，`creator_copilot:v1:events` 存 LocalEvent 列表。完整定义见附录 `CacheIndex / LocalDraft / Snapshot / EditedDraft / ImageManifest / IdeaLibrary / LocalEvent`。
 
 | LocalDraft 字段 | 类型与用途 |
 |---|---|
@@ -204,6 +209,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 | kind / title / stage | 模块、显示标题与恢复阶段 |
 | createdAt / updatedAt | 原始创建与最新保存时间；不因打开而改创建时间 |
 | snapshot.images | 图片名称、尺寸、角色、原文件大小、指纹；没有图片内容；restoreState 固定 requires_reupload |
+| snapshot.sourceIdeaId | 可选的本地灵感卡来源；只做流转追溯，不自动成为模型事实 |
 | snapshot.brief / publishing / topic | 用户已填写信息，不含自动长期风格偏好 |
 | snapshot.referenceText | 用户粘贴的参考文字；截图识别文字保存在结果 referenceBlocks 中 |
 | snapshot.profileMode / representatives / manualRepresentative | 轻量确认状态，恢复后不强制再选一次 |
@@ -212,7 +218,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 新增：首次输入有效素材或文字时创建记录。更新：输入暂停 500ms、取得有效结果、选择方案或完成修改时更新当前记录，不每次生成一个重复历史项。用户主动“重新生成”创建新记录，旧手动稿保留；网络重试仍属于同一 run，不增加草稿。
 
-容量按本工具全部键和值的 UTF-16 长度乘以 2 做保守估算；该估算不是浏览器可用空间保证，实际写入失败仍须捕获。草稿条数与容量哪个先达到就先限制新增，不自动删除旧稿。[localStorage 容量与存储限制](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)
+容量按本工具全部键和值（含灵感库）的 UTF-16 长度乘以 2 做保守估算；该估算不是浏览器可用空间保证，实际写入失败仍须捕获。草稿条数、灵感卡 60 张上限与总容量哪个先达到就先限制新增，不自动删除旧稿或已收藏卡片。[localStorage 容量与存储限制](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)
 
 保存先写当前记录，再更新轻量索引；索引不一致时，只扫描本工具命名空间重建，不误删正文。记录写入失败保留上一份完整值和页面当前内容。不存在“为了腾空间先清空旧数据”的步骤。
 
@@ -222,7 +228,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 此模式不使用 IndexedDB、云盘或原图 Base64 缓存。完整图文永久恢复不属于 V1.0 承诺。用户清除网站数据后记录不可恢复；浏览器拒绝持久化时显示“本次尚未保存”。
 
-**验收。** 两个入口都能从首页直接到达；保存和恢复文字、选择状态一致；容量满不删旧稿；缓存损坏仅影响对应项；历史区不出现登录要求。
+**验收。** 三个 Tab 均可单击直达；文案助手为默认页；保存和恢复文字、选择状态一致；容量满不删旧稿或收藏卡；缓存损坏仅影响对应项；任何页面不出现登录要求。
 
 ### 4.2 模块一：主页长截图诊断报告（Profile Doctor）
 
@@ -236,7 +242,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 | 识别 | 图文骨架屏；调用 `profile.inspect`；没有数字校准和 Bounding Box 编辑 |
 | 轻确认 | `candidates[0..3]`；显示 label、疑似反馈状态、复选符号；整标签可点 |
 | 备选 | “都不准确”展开 `manualRepresentative`，最多100字；另有“仅做视觉诊断” |
-| 报告 | 整体视觉标签、四项视觉状态、头像/背景图/昵称简介转化、垂直度、风格观察、高反馈假设、三层选题与优先动作 |
+| 报告 | 整体视觉标签、四项视觉状态、头像/背景图/昵称简介转化、垂直度、风格观察、高反馈假设、三维选题预览与优先动作；生成成功后提示“3 条选题已存入灵感库” |
 
 #### 业务流程与 AI 逻辑
 
@@ -246,7 +252,7 @@ Request 统一为 `schemaVersion / requestId / task / payload`。Response 统一
 
 报告不展示或保存 healthScore、dimension.score。visualGrade 是可见整体的定性判断；单项 status 优秀表示亮点清楚且表达稳定，良好表示可辨可读且有小改进空间，待优化须说明可见问题与动作，无法判断须说明截图局限。正文不出现证据编号或扣分措辞；依据列表与字段保留为内部审计。门面 feedback/clarityFeedback 同时描述可见资产和点评，不新增未获授权的商业目标；如需商业建议，用条件表达。垂直度区分可见笔记主副线，不虚构全账号比例，不把风格探索判为不垂直。
 
-风格观察单列，不因探索多个风格而扣分。高反馈规律是待验证假设，不输出“这就是爆款原因”。下周建议最多 3 个，只提出可尝试的题目与表达角度，不伪称用户已经做过作品、不承诺具体发布时间表现。
+风格观察单列，不因探索多个风格而扣分。高反馈规律是待验证假设，不输出“这就是爆款原因”。三维选题各一条：稳健线延展已确认高反馈作品或可见能力；时令线连接四季、冷暖、开学、毕业或送礼节点；跨界线给出具体跨材质或流行美学映射。没有实时数据时不得声称“正火”或给出虚构搜索量；IP 只能作为用户提供或画面可见的灵感符号，不推断官方授权。每条建议都是待尝试方向，不伪称用户已经做过作品或承诺发布时间表现。
 
 #### 完整协议入口与输出字段
 
@@ -263,9 +269,8 @@ Request／Response 完整 Schema 为附录的 `ProfileInspectRequest / ProfileIn
 | dimension | key、status、explanation、evidenceIds；恰好四个不同key |
 | headerAudit | avatar/banner: status、feedback、evidenceIds；bioAndConversion: status、clarityFeedback、conversionAdvice、evidenceIds |
 | verticalityAudit | status、summary、evidenceIds；区分可见主副线，不编造全账号占比 |
-| topicRecommendations | 恰好3项：稳健深耕款、场景破圈款、高搜痛点/情绪送礼款；每项type、title、rationale、visualAdvice、basisEvidenceIds；至少一个跳出单一代表作品，高搜标签不是实际搜索量事实 |
+| topicRecommendations | 恰好3项：稳健深耕线、时令节律与场景送礼线、跨界联动与流行混搭线；每项含 type、title、rationale、craftOrMaterialTip、visualAdvice、basisEvidenceIds |
 | viralPattern | hypothesis、representativeLabels、evidenceIds；0～3项 |
-| nextWeekTopic | title、angle、basisEvidenceIds；0～3项；都是建议，不是已发生的用户事实 |
 
 #### 异常与边界
 
@@ -345,7 +350,45 @@ photoReview 给构图与展示建议。封面仅用 clean、top_caption、bottom
 
 V1.0 不另做单方向补生成接口；用户选择“重新生成三套”时建立新记录并保留旧结果与修改。超长手动文案允许缓存并提示长度风险，不能因为不满足模型输出预算而丢失编辑内容。
 
-### 4.4 已废弃／Post-MVP：爆款逆向拆解与仿写（Feature 3）
+### 4.4 选题灵感库（Ideation Library）
+
+#### 模块目标与边界
+
+把主页体检中一次性的选题输出变成可持续使用的创作入口。V1.0 不为此新增模型调用：灵感卡唯一来源是通过验证的 `ProfileReport.topicRecommendations`，本地保存、收藏和跨 Tab 带入均由前端完成。用户不能在灵感库中凭空生成“当前趋势”，也不接入热榜、爬虫或平台搜索量。
+
+#### 数据结构与生成规则
+
+主页报告成功或有效 partial 后，前端将每条 recommendation 包装成 `IdeaLibraryItem`，写入 `creator_copilot:v1:ideas`。同一 `sourceRequestId + recommendation.type` 采用幂等 upsert，重开报告不重复插入；用户主动重新生成的新 requestId 形成新的三张卡。卡片上限 60，达到上限时禁止新增并提供管理入口，不自动删除旧卡或收藏卡。
+
+| 字段 | 定义与 UI 用途 |
+|---|---|
+| ideaId | 本地随机标识，用于收藏和跨栏带入 |
+| sourceDraftId / sourceRequestId | 对应来源诊断草稿和请求，保证可追溯；不展示为正文 |
+| recommendation.type | 三类之一：稳健深耕线／时令节律与场景送礼线／跨界联动与流行混搭线 |
+| recommendation.title | 卡片主标题，≤50字 |
+| recommendation.rationale | 为什么值得尝试，必须区分可见依据、通用节点建议和推测 |
+| recommendation.craftOrMaterialTip | 可执行的针法、结构、材质或配件组合建议；不得把建议写成已完成事实 |
+| recommendation.visualAdvice | 成品拍摄或封面呈现建议，与工艺建议分开 |
+| recommendation.basisEvidenceIds | 回查来源报告 evidence；若来源截图已释放，只显示文字描述，不假装原图仍存在 |
+| isFavorite | 本机收藏状态；默认 false，不扩展为跨模块通用收藏体系 |
+| createdAt / updatedAt | 本地带时区时间戳；收藏变化只更新 updatedAt |
+
+#### 页面信息架构与交互
+
+顶部提供“全部／已收藏”二态筛选，并用三种类型标签帮助扫读；不做复杂分类管理。空状态分两种：从未体检时提示“先做一次主页体检，选题会自动沉淀到这里”；缓存被清空时明确说明本机记录不可恢复。每张卡默认展示类型、标题、理由和工艺／材质建议；封面建议可展开。主动作是“去写文案”，次动作是收藏／取消收藏和“查看来源诊断”。
+
+“去写文案”必须执行以下确定映射：
+
+1. 新建一条 `post` 草稿并记录 `snapshot.sourceIdeaId`，不得覆盖文案助手中尚未保存的编辑稿。
+2. 切换到 Tab 1 文案助手，把 `brief.styleRequest` 预填为“{type}｜{title}”，把 `brief.inspirationOrWishes` 预填为 rationale；两者仍可编辑。
+3. craftOrMaterialTip 只作为“灵感参考”展示，不自动写入 `brief.material`、`difficulty`、`durationMinutes` 或 confirmedTags；用户明确采用并修改后才成为本次输入。
+4. 不携带来源主页截图，也不把原账号高反馈结论当成新作品事实。用户仍须上传自己的成品照片才能调用 `post.generate`。
+
+#### 异常与验收
+
+单张卡写入失败不影响诊断报告阅读，页面显示“报告已生成，部分选题未保存”；重试采用相同幂等键。来源草稿被删除时卡片可继续使用，但“查看来源诊断”显示来源已不存在。卡片结构损坏时隔离该项，不让整库白屏。验收必须覆盖：三卡自动沉淀、重复打开不重复、收藏刷新后保留、从卡片新建文案草稿、未上传作品图不能生成、清空本地数据后的真实空状态。
+
+### 4.5 已废弃／Post-MVP：爆款逆向拆解与仿写（Feature 3）
 
 **状态：不属于 V1.0 MVP。** 2026-09-17 决定取消该功能。原因是手作赛道的核心价值更集中在作品视觉、工艺参数与图解实用度；结构仿写偏离首位真实用户的主要工作流，并增加圈内抄袭与同质化风险。当前首页、导航、页面路由、接口、Prompt、测试、缓存新建逻辑和验收均不得实现或计入 Feature 3。
 
@@ -503,7 +546,7 @@ System Prompt由服务端按版本加载，固定声明任务、数据边界、�
 
 正式生成内部次序：读取素材→区分事实、观察和推测→生成候选与证据→检查结构和内容。只交付诊断、文案和证据，不交付隐藏推理过程。耗时与重试次数由应用记录，不由模型编造。
 
-当前协议版本仍为 2.0.0。主页使用已走查的定性门面诊断 Prompt；成品生成使用 `post_generate_v1.2.0`，已加入可选 `inspirationOrWishes`、第一人称博主视角、自然参数表达及第三方／法务话术拦截。两个核心功能均已完成本地端到端 Schema 走查；这不等于生产上线。`viral_generate` 已废弃，不维护 Prompt 版本，也不要求回归。
+当前协议版本为 2.1.0。主页使用 `profile_*_v2.1.0`，在已走查的定性门面诊断基础上增加稳健、时令、跨界三维选题和 craftOrMaterialTip；成品生成继续使用 `post_generate_v1.2.0`，已加入可选 `inspirationOrWishes`、第一人称博主视角、自然参数表达及第三方／法务话术拦截。协议2.0.0下的两个核心功能均已完成本地端到端 Schema 走查；本次2.1.0变更已完成结构与业务规则回归，但三维选题的新模型输出尚未重新发起真实调用，因此不能把历史结果写成2.1.0端到端通过，更不等于生产上线。`viral_generate` 已废弃，不维护 Prompt 版本，也不要求回归。
 
 ### 6.2 评测数据与执行方案
 
@@ -618,10 +661,10 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:creator-copilot:protocol:2.0.0",
+  "$id": "urn:creator-copilot:protocol:2.1.0",
   "title": "Creator Copilot V1.0 MVP normative contract",
-  "description": "Root accepts an API request, API response, or local draft. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6. The current MVP implements only profile.* and post.*; viral.* definitions are deprecated Post-MVP reservations and must not be exposed by current routes or UI.",
-  "$comment": "MVP scope decision 2026-09-17: Feature 3 viral reverse-engineering is pruned. Retained viral definitions are non-active compatibility reservations, not implementation requirements.",
+  "description": "Root accepts an API request, API response, local draft, or local idea library. Validate the specific $defs entry at each boundary. Cross-field semantic rules are normative in PRD section 3.6. The current MVP implements profile.* and post.* model calls plus a local idea-library workspace; viral.* definitions are deprecated Post-MVP reservations and must not be exposed by current routes or UI.",
+  "$comment": "MVP scope decision 2026-09-18: the mobile IA uses Copy, Ideas, and Profile tabs. Ideas persist profile-report recommendations locally; no third model endpoint is added. Feature 3 viral reverse-engineering remains pruned.",
   "oneOf": [
     {
       "$ref": "#/$defs/Request"
@@ -631,6 +674,9 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
     },
     {
       "$ref": "#/$defs/LocalDraft"
+    },
+    {
+      "$ref": "#/$defs/IdeaLibrary"
     }
   ],
   "$defs": {
@@ -1091,7 +1137,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       ],
       "properties": {
         "schemaVersion": {
-          "const": "2.0.0"
+          "const": "2.1.0"
         },
         "requestId": {
           "$ref": "#/$defs/Id"
@@ -1360,6 +1406,110 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
         }
       }
     },
+    "TopicRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "title",
+        "rationale",
+        "craftOrMaterialTip",
+        "visualAdvice",
+        "basisEvidenceIds"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "稳健深耕线",
+            "时令节律与场景送礼线",
+            "跨界联动与流行混搭线"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "craftOrMaterialTip": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "visualAdvice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "basisEvidenceIds": {
+          "$ref": "#/$defs/EvidenceIds",
+          "minItems": 1
+        }
+      }
+    },
+    "IdeaLibraryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaId",
+        "sourceDraftId",
+        "sourceRequestId",
+        "recommendation",
+        "isFavorite",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "ideaId": {
+          "$ref": "#/$defs/Id"
+        },
+        "sourceDraftId": {
+          "$ref": "#/$defs/Id"
+        },
+        "sourceRequestId": {
+          "$ref": "#/$defs/Id"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/TopicRecommendation"
+        },
+        "isFavorite": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "IdeaLibrary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cacheVersion",
+        "items"
+      ],
+      "properties": {
+        "cacheVersion": {
+          "const": "1.0.0"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 60,
+          "items": {
+            "$ref": "#/$defs/IdeaLibraryItem"
+          }
+        }
+      }
+    },
     "ProfileReport": {
       "type": "object",
       "additionalProperties": false,
@@ -1602,6 +1752,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
               "type",
               "title",
               "rationale",
+              "craftOrMaterialTip",
               "visualAdvice",
               "basisEvidenceIds"
             ],
@@ -1609,9 +1760,9 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
               "type": {
                 "type": "string",
                 "enum": [
-                  "稳健深耕款",
-                  "场景破圈款",
-                  "高搜痛点/情绪送礼款"
+                  "稳健深耕线",
+                  "时令节律与场景送礼线",
+                  "跨界联动与流行混搭线"
                 ]
               },
               "title": {
@@ -1620,6 +1771,11 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
                 "maxLength": 50
               },
               "rationale": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "craftOrMaterialTip": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 300
@@ -1644,7 +1800,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
                 ],
                 "properties": {
                   "type": {
-                    "const": "稳健深耕款"
+                    "const": "稳健深耕线"
                   }
                 }
               },
@@ -1659,7 +1815,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
                 ],
                 "properties": {
                   "type": {
-                    "const": "场景破圈款"
+                    "const": "时令节律与场景送礼线"
                   }
                 }
               },
@@ -1674,7 +1830,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
                 ],
                 "properties": {
                   "type": {
-                    "const": "高搜痛点/情绪送礼款"
+                    "const": "跨界联动与流行混搭线"
                   }
                 }
               },
@@ -2331,7 +2487,7 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
       ],
       "properties": {
         "schemaVersion": {
-          "const": "2.0.0"
+          "const": "2.1.0"
         },
         "promptVersion": {
           "type": "string",
@@ -2793,6 +2949,17 @@ LocalEvent完整协议见附录：事件包括generation_submitted、generation_
               "type": "null"
             }
           ]
+        },
+        "sourceIdeaId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional local idea-library source for a post draft. It is never sent as a model fact by itself."
         },
         "brief": {
           "anyOf": [

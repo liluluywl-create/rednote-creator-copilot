@@ -7,13 +7,13 @@ import sharp from 'sharp';
 import { createContract, parseModelJson, checkBusiness, finalizeModel, prepareImages, makeProviderBody, callProvider, validateConfig, LIMITS, SCHEMA_VERSION, compatibleInspection, renderReportMarkdown } from '../test_profile_diagnosis.js';
 
 const contract = await createContract();
-test('prompt retains visitor-only audit and exploratory capability constraints', async () => {
+test('prompt retains visitor-only audit and enforces all three ideation vectors', async () => {
   const prompt = await readFile(new URL('../prompts/profile_system_v1.0.md', import.meta.url), 'utf8');
-  for (const required of ['V2.0.1', '忽略作者端私有功能控件', '普通访客视角', '实测能不能装下耳机？', '不预设未经核实的实物参数']) assert.ok(prompt.includes(required));
+  for (const required of ['V2.1.0', '忽略作者端私有功能控件', '普通访客视角', '实测能不能装下耳机？', '不预设未经核实的实物参数', '稳健深耕线', '时令节律与场景送礼线', '跨界联动与流行混搭线', 'craftOrMaterialTip']) assert.ok(prompt.includes(required));
 });
 const evidence = { evidenceId: 'e1', sourceType: 'image', sourceId: 'image_1', description: '自建示例中的蓝色杯垫。', quote: null, confidence: 'high' };
 const input = { schemaVersion: SCHEMA_VERSION, requestId: 'test_1', task: 'profile.inspect', payload: { images: [{ imageId: 'image_1', mimeType: 'image/png', base64: 'AAAA', width: 20, height: 20, byteLength: 3 }] } };
-const meta = { schemaVersion: SCHEMA_VERSION, promptVersion: 'profile_inspect_v2.0.0', modelId: 'test_fixture', runType: 'demo_fixture', durationMs: 0, retryCount: 0 };
+const meta = { schemaVersion: SCHEMA_VERSION, promptVersion: 'profile_inspect_v2.1.0', modelId: 'test_fixture', runType: 'demo_fixture', durationMs: 0, retryCount: 0 };
 const model = () => ({ status: 'success', data: { candidates: [{ candidateId: 'c1', label: '蓝色杯垫', sourceImageIds: ['image_1'], feedbackSignal: 'unknown', evidenceIds: ['e1'] }], evidence: [structuredClone(evidence)] }, warnings: [], error: null });
 
 test('accepts pure JSON without cleanup', () => assert.equal(parseModelJson(JSON.stringify(model())).firstParsePassed, true));
@@ -83,7 +83,11 @@ const reportModel = () => ({ status: 'success', data: {
   headerAudit: { avatar: {status:'良好',feedback:'头像可辨',evidenceIds:['e1']}, banner:{status:'良好',feedback:'背景简洁',evidenceIds:['e1']},bioAndConversion:{status:'良好',clarityFeedback:'昵称清楚',conversionAdvice:'如想分享教程可补一句',evidenceIds:['e1']} },
   verticalityAudit:{status:'良好',summary:'手作主线与生活支线相连',evidenceIds:['e1']},
   summary:{text:'自建样例',evidenceIds:['e1']},styleObservation:null,viralPatterns:[],
-  topicRecommendations:['稳健深耕款','场景破圈款','高搜痛点/情绪送礼款'].map(type=>({type,title:'自建选题',rationale:'观察基础',visualAdvice:'作品近景',basisEvidenceIds:['e1']})),
+  topicRecommendations:[
+    {type:'稳健深耕线',title:'造型家族延展',rationale:'从现有核心造型延展为同系列挂件品类',craftOrMaterialTip:'保留主体针法，缩小尺寸并调整挂环结构',visualAdvice:'同系列三件并排近景',basisEvidenceIds:['e1']},
+    {type:'时令节律与场景送礼线',title:'毕业季祝福小物',rationale:'适合在毕业送礼节点前提前准备',craftOrMaterialTip:'增加可写祝福卡的小布标',visualAdvice:'礼盒与手持场景',basisEvidenceIds:['e1']},
+    {type:'跨界联动与流行混搭线',title:'钩织串珠混搭',rationale:'用跨界材质给毛线作品增加光泽层次',craftOrMaterialTip:'钩织主体搭配串珠与小型金属配件',visualAdvice:'拍清材质交界细节',basisEvidenceIds:['e1']}
+  ],
   priorityActions:[{text:'增加文字对比度',evidenceIds:['e1']}],evidence:[structuredClone(evidence)]
 },warnings:[],error:null});
 test('qualitative report retains grades without injecting numeric scores', () => {
@@ -97,8 +101,8 @@ test('new report rejects numeric fields, missing assets and invalid labels', () 
   cases[0].data.healthScore=80; cases[1].data.dimensions[0].score=80; delete cases[2].data.headerAudit.banner; cases[3].data.visualGrade='一般';
   for(const v of cases) assert.throws(()=>finalizeModel(v,reportRequest,meta,contract));
 });
-test('three topic layers are mandatory and unique in schema itself', () => {
-  for(const change of [v=>v.data.topicRecommendations.pop(),v=>v.data.topicRecommendations[1].type='稳健深耕款']) {
+test('three ideation vectors and craftOrMaterialTip are mandatory in schema itself', () => {
+  for(const change of [v=>v.data.topicRecommendations.pop(),v=>v.data.topicRecommendations[1].type='稳健深耕线',v=>delete v.data.topicRecommendations[2].craftOrMaterialTip]) {
     const v=reportModel(); change(v); assert.equal(contract.models['profile.report'](v),false);
   }
 });
@@ -115,7 +119,7 @@ test('new assets and topics require valid evidence; user prose rejects codes and
 });
 test('Markdown includes all new sections and omits internal evidence', () => {
   const md=renderReportMarkdown(finalizeModel(reportModel(),reportRequest,meta,contract));
-  for(const term of ['头像','背景图','昵称','内容垂直度','稳健深耕款','场景破圈款','高搜痛点/情绪送礼款']) assert.ok(md.includes(term));
+  for(const term of ['头像','背景图','昵称','内容垂直度','稳健深耕线','时令节律与场景送礼线','跨界联动与流行混搭线','工艺／材质建议']) assert.ok(md.includes(term));
   assert.doesNotMatch(md,/e1|evidenceIds|healthScore/);
 });
 test('legacy inspection compatibility is explicit, nonmutating and never migrates reports', () => {
@@ -124,6 +128,19 @@ test('legacy inspection compatibility is explicit, nonmutating and never migrate
   assert.equal(old.meta.schemaVersion,'1.0.0');assert.equal(copy.meta.schemaVersion,SCHEMA_VERSION);
   assert.throws(()=>compatibleInspection({...old,task:'profile.report'}));
   assert.throws(()=>compatibleInspection({...old,meta:{...meta,schemaVersion:'3.0.0'}}));
+});
+test('2.0.0 inspections remain reusable, while old reports are never migrated', () => {
+  const saved={...finalizeModel(model(),input,meta,contract),meta:{...meta,schemaVersion:'2.0.0'}};
+  const copy=compatibleInspection(saved); contract.check('ProfileInspectResponse',copy);
+  assert.equal(saved.meta.schemaVersion,'2.0.0'); assert.equal(copy.meta.schemaVersion,SCHEMA_VERSION);
+  assert.throws(()=>compatibleInspection({...saved,task:'profile.report'}));
+});
+test('local idea library preserves source, favorite state and the complete recommendation card', () => {
+  const recommendation=structuredClone(reportModel().data.topicRecommendations[0]);
+  const library={cacheVersion:'1.0.0',items:[{ideaId:'idea_1',sourceDraftId:'draft_1',sourceRequestId:'request_1',recommendation,isFavorite:true,createdAt:'2026-09-18T00:00:00+08:00',updatedAt:'2026-09-18T00:00:00+08:00'}]};
+  assert.doesNotThrow(()=>contract.check('IdeaLibrary',library));
+  delete library.items[0].recommendation.craftOrMaterialTip;
+  assert.throws(()=>contract.check('IdeaLibrary',library));
 });
 test('visual-only report rejects unconfirmed viral patterns', () => {
   const r = { ...input, task: 'profile.report', payload: { ...input.payload, mode: 'visual_only', representatives: [], manualRepresentative: null } };

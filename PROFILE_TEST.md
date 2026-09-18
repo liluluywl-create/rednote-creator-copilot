@@ -1,10 +1,16 @@
 # 主页多图本地走查
 
-## Prompt 2.0.1 边界收敛
+## 协议 2.1.0：选题灵感三维升级
+
+移动端 IA 调整为“文案助手／选题灵感／主页体检”三栏，但当前仍只有 `profile.*` 与 `post.*` 两条模型调用链。主页报告输出的三张 topicRecommendations 卡片自动沉淀至本地灵感库；不新增独立选题模型接口。协议 2.1.0 将选题类型更新为稳健深耕线、时令节律与场景送礼线、跨界联动与流行混搭线，并强制增加 craftOrMaterialTip。旧 2.0.0 报告不自动迁移；结构未变的 2.0.0 profile.inspect 结果可在内存升级元信息后复用。
+
+本轮只执行 Schema、业务规则、Prompt 规则和本地缓存结构回归，未重新调用模型；不得把 2.0.0 的历史真实报告冒充为 2.1.0 选题输出已通过端到端评测。
+
+## 历史记录：Prompt 2.0.1 边界收敛
 
 协议仍为2.0.0；Prompt更新为2.0.1。忽略作者端控件，只按可确认的访客视角评估转化；容量与具体功能使用实测/展示的探索语气，不预设参数或效果。本轮仅做离线代码回归与规则存在性测试，未重新调用模型，不能声称新边界已通过真实输出评测。历史2.0.0报告保留为原始样本，不覆盖。
 
-## 方案 B：协议与 Prompt 2.0.0
+## 历史记录：方案 B（协议与 Prompt 2.0.0）
 
 本轮补充一种受限语法修复：完整响应只有 data 在顶层 warnings 前漏闭合时，仅在根字段结构明确、两侧均可解析且没有缺失字段时插入一个右括号，再完整校验。禁止一般性补尾括号或补内容。可用 --replay test-results/记录.raw.txt 对已保存回复离线回放；比对原图片指纹、任务与协议，audit 标记 saved_response_replay，不新增模型调用，不计入模型原始格式合格率/生成成功率或推理延迟。历史失败记录不覆盖。
 
@@ -44,7 +50,7 @@
 
 ## Prompt与协议
 
-完整 System Message = `prompts/profile_system_v1.0.md` + 当前task + 从协议提取的模型责任 Schema（含全部必要 $defs）。正式报告使用 visualGrade、dimensions、headerAudit、verticalityAudit、styleObservation、viralPatterns、topicRecommendations 等2.0.0字段。
+完整 System Message = `prompts/profile_system_v1.0.md` + 当前task + 从协议提取的模型责任 Schema（含全部必要 $defs）。正式报告使用 visualGrade、dimensions、headerAudit、verticalityAudit、styleObservation、viralPatterns、topicRecommendations 等2.1.0字段；选题卡必须包含 type、title、rationale、craftOrMaterialTip、visualAdvice、basisEvidenceIds。
 
 模型只生成 status/data/warnings/error；程序填写 requestId/task/meta。新版不计算或输出视觉数值评分。先校验模型责任部分，再校验完整 ProfileInspectResponse / ProfileReportResponse，再校验引用、唯一ID、确认范围和状态规则。所有类型、必填项、长度和 additionalProperties 均执行，不删字段、不补默认值、不改协议迁就模型。
 
